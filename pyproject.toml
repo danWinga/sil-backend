@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "si-backend"
+version = "0.1.0"
+description = ""
+authors = ["danwinga <danwinga@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+django = "^5.2.1"
+djangorestframework = "^3.16.0"
+psycopg2-binary = "^2.9.10"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.5"
+pytest-django = "^4.11.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
