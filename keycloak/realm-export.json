@@ -1,0 +1,24 @@
+{
+    "id": "si",
+    "realm": "si",
+    "enabled": true,
+    "clients": [
+      {
+        "clientId": "si-backend",
+        "secret": "supersecret",
+        "publicClient": false,
+        "directAccessGrantsEnabled": true,
+        "redirectUris": ["*"]
+      }
+    ],
+    "users": [
+      {
+        "username": "testuser",
+        "enabled": true,
+        "email": "testuser@example.com",
+        "credentials": [
+          { "type": "password", "value": "password", "temporary": false }
+        ]
+      }
+    ]
+  }
