@@ -23,6 +23,8 @@ africastalking = "^1.2.9"
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"
 pytest-django = "^4.11.1"
+pytest-cov = "^6.1.1"
+requests = "^2.32.3"
 
 
 
