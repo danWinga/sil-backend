@@ -1,0 +1,33 @@
+# conftest.py
+import pytest
+from rest_framework.test import APIClient
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+@pytest.fixture
+def client():
+    return APIClient()
+
+@pytest.fixture
+def user(db):
+    return User.objects.create_user(username="u", email="u@example.com", password="p")
+
+@pytest.fixture
+def auth_client(client, user):
+    client.force_authenticate(user=user)
+    return client
+
+@pytest.fixture
+def category(db):
+    from catalog.models import Category
+    return Category.objects.create(name="Cat", slug="cat")
+
+@pytest.fixture
+def products(category):
+    from catalog.models import Product
+    p1 = Product.objects.create(name="P1", price="10.00")
+    p1.categories.add(category)
+    p2 = Product.objects.create(name="P2", price="20.00")
+    p2.categories.add(category)
+    return [p1, p2]
