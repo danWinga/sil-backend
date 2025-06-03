@@ -11,6 +11,9 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -22,6 +25,9 @@ services:
       - "15672:15672"
     volumes:
       - rabbitdata:/var/lib/rabbitmq
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
 
   keycloak:
     image: quay.io/keycloak/keycloak:21.1.2
@@ -35,6 +41,9 @@ services:
       KC_METRICS_ENABLED: "true"
     volumes:
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm.json
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
 
   web:
     build:
@@ -49,8 +58,11 @@ services:
     depends_on:
       - postgres
       - rabbitmq
-      - keycloak
-
+      - keycloak    
+    restart: on-failure
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
   worker:
     build:
       context: .
@@ -61,6 +73,10 @@ services:
       - postgres
       - rabbitmq
       - keycloak
+    restart: on-failure
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
 
 volumes:
   pgdata:

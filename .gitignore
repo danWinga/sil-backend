@@ -7,3 +7,7 @@ __pycache__/
 *.egg-info/
 /config/settings.py
 db.sqlite3
+config/settings copy.py
+notes.txt
+config/settings copy.py
+notes.txt

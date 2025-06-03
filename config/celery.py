@@ -14,3 +14,4 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 
 # auto-discover @shared_task in your apps
 app.autodiscover_tasks()
+

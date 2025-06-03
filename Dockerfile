@@ -25,3 +25,5 @@ COPY . /app/
 
 # 5) Default command for web (overridden in compose)
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# Default: run migrations then Django server
+#CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]

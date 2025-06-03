@@ -15,7 +15,7 @@
       {
         "username": "testuser",
         "enabled": true,
-        "email": "testuser@example.com",
+        "email": "dibomawhite@gmail.com",
         "credentials": [
           { "type": "password", "value": "password", "temporary": false }
         ]
