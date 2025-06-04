@@ -40,6 +40,36 @@ black         = "^25.1.0"
 isort         = "^5.12.0"
 flake8        = "^6.1.0"
 
+
 [build-system]
 requires       = ["poetry-core"]
 build-backend  = "poetry.core.masonry.api"
+
+[tool.flake8]
+# allow up to 120 chars so you don’t break every long docstring or import
+max-line-length = 120
+
+# ignore “line too long” and “import not at top” everywhere
+extend-ignore = [
+  "E501",   # line too long
+  "E402",   # module level import not at top
+]
+
+# Skip auto-generated or non-py source folders
+exclude = [
+  ".git",
+  "__pycache__",
+  "venv",
+  ".venv",
+  "docker-compose.yml",
+  "notes.txt",
+  "ci.yml",
+  ".github",
+  "keycloak/realm-export.json",
+  "*/migrations/*"
+]
+
+# For migrations you can also silence unused-import F401
+per-file-ignores = [
+  "*/migrations/*.py: F401"
+]
