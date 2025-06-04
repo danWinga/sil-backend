@@ -1,3 +1,5 @@
+# .github/workflows/ci-docker-compose.yml
+
 name: CI via Docker Compose
 
 on:
@@ -69,35 +71,35 @@ jobs:
 
       - name: Build Docker images
         run: |
-          docker-compose build
+          docker compose build
 
       - name: Start Postgres & RabbitMQ
         run: |
-          docker-compose up -d postgres rabbitmq
+          docker compose up -d postgres rabbitmq
 
-      - name: Wait for Postgres to be healthy
+      - name: Wait for Postgres
         run: |
-          until docker-compose exec -T postgres pg_isready -U postgres; do
+          until docker compose exec -T postgres pg_isready -U postgres; do
             echo "Waiting for Postgres..."
             sleep 1
           done
 
-      - name: Wait for RabbitMQ to be healthy
+      - name: Wait for RabbitMQ
         run: |
-          until docker-compose exec -T rabbitmq rabbitmqctl status; do
+          until docker compose exec -T rabbitmq rabbitmqctl status; do
             echo "Waiting for RabbitMQ..."
             sleep 1
           done
 
       - name: Run Django migrations
         run: |
-          docker-compose run --rm web python manage.py migrate --noinput
+          docker compose run --rm web python manage.py migrate --noinput
 
       - name: Run test suite
         run: |
-          docker-compose run --rm web pytest --maxfail=1 --disable-warnings -q --cov=.
+          docker compose run --rm web pytest --disable-warnings -q --maxfail=1 --cov=.
 
       - name: Tear down Docker Compose
         if: always()
         run: |
-          docker-compose down --volumes --remove-orphans
+          docker compose down --volumes --remove-orphans
