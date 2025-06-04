@@ -1,3 +1,5 @@
+# .github/workflows/ci.yml
+
 name: CI
 
 on:
@@ -10,7 +12,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    # Bring up Postgres and RabbitMQ for tests
+    # Start Postgres & RabbitMQ for integration-style tests
     services:
       postgres:
         image: postgres:15
@@ -27,26 +29,26 @@ jobs:
 
       rabbitmq:
         image: rabbitmq:3-management
-        ports: ["5672:5672"]
+        ports: ["5672:5672","15672:15672"]
         options: >-
           --health-cmd="rabbitmqctl status"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
 
+    # Ensure Django & pytest know where your settings live
     env:
-      # Django & pytest settings
       DJANGO_SETTINGS_MODULE: config.settings
-      # DB & broker URLs for your app
-      DATABASE_URL:            postgres://postgres:postgres@localhost:5432/postgres
-      RABBITMQ_URL:            amqp://guest:guest@localhost:5672/
-      DEBUG:                   "True"
+      PYTHONPATH:             ${{ github.workspace }}
+      DATABASE_URL:           postgres://postgres:postgres@localhost:5432/postgres
+      RABBITMQ_URL:           amqp://guest:guest@localhost:5672/
+      DEBUG:                  "True"
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python & Poetry
+      - name: Setup Python 3.12
         uses: actions/setup-python@v4
         with:
           python-version: "3.12"
@@ -61,7 +63,7 @@ jobs:
           # include dev dependencies for testing & linting
           poetry install --no-interaction --no-ansi --with dev
 
-      - name: Install lint tools into venv
+      - name: Install lint tools
         run: |
           poetry run pip install black isort flake8
 
@@ -77,11 +79,7 @@ jobs:
         run: |
           poetry run flake8 .
 
-      - name: Add project root to PYTHONPATH
-        # ensures pytest finds the config module
-        run: echo "PYTHONPATH=$PWD" >> $GITHUB_ENV
-
-      - name: Run tests
+      - name: Run tests with coverage
         run: |
           poetry run pytest --maxfail=1 --disable-warnings -q --cov=.
 
