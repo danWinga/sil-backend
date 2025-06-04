@@ -1,10 +1,6 @@
 name: CI
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+on: [push,pull_request]
 
 jobs:
   test:
@@ -14,25 +10,25 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_DB: postgres
-          POSTGRES_USER: postgres
+          POSTGRES_DB:       postgres
+          POSTGRES_USER:     postgres
           POSTGRES_PASSWORD: postgres
         ports: ["5432:5432"]
         options: >-
-          --health-cmd="pg_isready -U postgres"
-          --health-interval=10s --health-timeout=5s --health-retries=5
+          --health-cmd="pg_isready -U postgres" --health-interval=10s
+          --health-timeout=5s --health-retries=5
 
       rabbitmq:
         image: rabbitmq:3-management
         ports: ["5672:5672"]
         options: >-
-          --health-cmd="rabbitmqctl status"
-          --health-interval=10s --health-timeout=5s --health-retries=5
+          --health-cmd="rabbitmqctl status" --health-interval=10s
+          --health-timeout=5s --health-retries=5
 
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
       RABBITMQ_URL:  amqp://guest:guest@localhost:5672/
-      DEBUG: "True"      # enable BasicAuth in tests
+      DEBUG: "True"
 
     steps:
       - name: Checkout code
@@ -52,17 +48,25 @@ jobs:
         run: |
           poetry install --no-interaction --no-ansi
 
+      - name: Install lint tools into venv
+        run: |
+          poetry run pip install black isort flake8
+
       - name: Lint with Black
-        run: poetry run black --check .
+        run: |
+          poetry run black --check .
 
       - name: Lint imports with isort
-        run: poetry run isort --check-only .
+        run: |
+          poetry run isort --check-only .
 
       - name: Lint with flake8
-        run: poetry run flake8 .
+        run: |
+          poetry run flake8 .
 
       - name: Run tests
-        run: poetry run pytest --maxfail=1 --disable-warnings -q --cov=.
+        run: |
+          poetry run pytest --maxfail=1 --disable-warnings -q --cov=.
 
       - name: Upload coverage to Codecov
         if: github.event_name == 'push'
