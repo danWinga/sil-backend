@@ -30,6 +30,15 @@ pytest-mock = "^3.14.1"
 pytest-celery = "^1.2.0"
 
 
+packages = [
+  { include = "config"        },
+  { include = "accounts"      },
+  { include = "catalog"       },
+  { include = "orders"        },
+  { include = "notifications" },
+]
+
+
 
 [build-system]
 requires = ["poetry-core"]
