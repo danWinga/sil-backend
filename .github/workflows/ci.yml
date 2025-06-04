@@ -35,9 +35,12 @@ jobs:
           --health-retries=5
 
     env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
-      RABBITMQ_URL:  amqp://guest:guest@localhost:5672/
-      DEBUG: "True"
+      # Django & pytest settings
+      DJANGO_SETTINGS_MODULE: config.settings
+      # DB & broker URLs for your app
+      DATABASE_URL:            postgres://postgres:postgres@localhost:5432/postgres
+      RABBITMQ_URL:            amqp://guest:guest@localhost:5672/
+      DEBUG:                   "True"
 
     steps:
       - name: Checkout code
@@ -55,6 +58,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          # include dev dependencies for testing & linting
           poetry install --no-interaction --no-ansi --with dev
 
       - name: Install lint tools into venv
@@ -74,7 +78,7 @@ jobs:
           poetry run flake8 .
 
       - name: Add project root to PYTHONPATH
-        # Ensures pytest can import config.settings
+        # ensures pytest finds the config module
         run: echo "PYTHONPATH=$PWD" >> $GITHUB_ENV
 
       - name: Run tests
