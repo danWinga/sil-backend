@@ -1,9 +1,14 @@
 [tool.poetry]
-name = "si-backend"
-version = "0.1.0"
+name        = "si-backend"
+version     = "0.1.0"
 description = ""
-authors = ["danwinga <danwinga@gmail.com>"]
-readme = "README.md"
+authors     = ["danwinga <danwinga@gmail.com>"]
+readme      = "README.md"
+
+# Disable packaging/installing the root project itself
+package-mode = false
+
+# Tell Poetry which directories to treat as installable packages
 packages = [
   { include = "config"        },
   { include = "accounts"      },
@@ -12,34 +17,29 @@ packages = [
   { include = "notifications" },
 ]
 
-
 [tool.poetry.dependencies]
-python = "^3.12"
-django = "^5.2.1"
-djangorestframework = "^3.16.0"
-psycopg2-binary = "^2.9.10"
-django-environ = "^0.12.0"
-django-cors-headers = "^4.7.0"
-django-mptt = "^0.17.0"
-drf-oidc-auth = "^3.0.0"
-pyjwt = {extras = ["crypto"], version = "^2.10.1"}
-requests = "^2.32.3"
-cachetools = "^6.0.0"
-celery = "^5.5.2"
-africastalking = "^1.2.9"
-pika = "^1.3.2"
+python               = "^3.12"
+django               = "^5.2.1"
+djangorestframework  = "^3.16.0"
+psycopg2-binary      = "^2.9.10"
+django-environ       = "^0.12.0"
+django-cors-headers  = "^4.7.0"
+django-mptt          = "^0.17.0"
+drf-oidc-auth        = "^3.0.0"
+pyjwt                = { extras = ["crypto"], version = "^2.10.1" }
+requests             = "^2.32.3"
+cachetools           = "^6.0.0"
+celery               = "^5.5.2"
+africastalking       = "^1.2.9"
+pika                 = "^1.3.2"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.3.5"
-pytest-django = "^4.11.1"
-pytest-cov = "^6.1.1"
-requests = "^2.32.3"
-pytest-mock = "^3.14.1"
-pytest-celery = "^1.2.0"
-
-
-
+pytest               = "^8.3.5"
+pytest-django        = "^4.11.1"
+pytest-cov           = "^6.1.1"
+pytest-mock          = "^3.14.1"
+pytest-celery        = "^1.2.0"
 
 [build-system]
-requires = ["poetry-core"]
+requires    = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
