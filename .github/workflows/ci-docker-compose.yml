@@ -9,43 +9,95 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB:       postgres
+          POSTGRES_USER:     postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+      rabbitmq:
+        image: rabbitmq:3-management
+        env:
+          RABBITMQ_DEFAULT_USER: guest
+          RABBITMQ_DEFAULT_PASS: guest
+        ports: ["5672:5672","15672:15672"]
+        options: >-
+          --health-cmd="rabbitmqctl status"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Copy example env
+      - name: Create .env file from GitHub Secrets
         run: |
-          cp .env.example .env
+          cat > .env <<EOF
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          DEBUG=True
+          ALLOWED_HOSTS=localhost,127.0.0.1
 
-      - name: Start services with Docker Compose
-        # use the built-in docker compose (v2) CLI
-        run: |
-          docker compose up -d --build
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          RABBITMQ_URL=${{ secrets.RABBITMQ_URL }}
 
-      - name: Wait for Postgres
+          OIDC_RP_CLIENT_ID=si-backend
+          OIDC_RP_CLIENT_SECRET=${{ secrets.OIDC_RP_CLIENT_SECRET }}
+          OIDC_OP_ISSUER=${{ secrets.OIDC_OP_ISSUER }}
+
+          AFRICAS_TALKING_API_KEY=${{ secrets.AFRICAS_TALKING_API_KEY }}
+          AFRICAS_TALKING_USERNAME=${{ secrets.AFRICAS_TALKING_USERNAME }}
+
+          EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+          EMAIL_HOST=${{ secrets.EMAIL_HOST }}
+          EMAIL_PORT=${{ secrets.EMAIL_PORT }}
+          EMAIL_USE_TLS=True
+          EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}
+          EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}
+          DEFAULT_FROM_EMAIL=${{ secrets.DEFAULT_FROM_EMAIL }}
+          ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
+          EOF
+
+      - name: Build Docker images
         run: |
-          until docker compose exec -T postgres pg_isready -U postgres; do
-            echo "Waiting for Postgres…"
+          docker-compose build
+
+      - name: Start Postgres & RabbitMQ
+        run: |
+          docker-compose up -d postgres rabbitmq
+
+      - name: Wait for Postgres to be healthy
+        run: |
+          until docker-compose exec -T postgres pg_isready -U postgres; do
+            echo "Waiting for Postgres..."
             sleep 1
           done
 
-      - name: Wait for RabbitMQ
+      - name: Wait for RabbitMQ to be healthy
         run: |
-          until docker compose exec -T rabbitmq rabbitmqctl status; do
-            echo "Waiting for RabbitMQ…"
+          until docker-compose exec -T rabbitmq rabbitmqctl status; do
+            echo "Waiting for RabbitMQ..."
             sleep 1
           done
 
-      - name: Run migrations
+      - name: Run Django migrations
         run: |
-          docker compose exec -T web python manage.py migrate --noinput
+          docker-compose run --rm web python manage.py migrate --noinput
 
       - name: Run test suite
         run: |
-          # run inside the web container so you get the same environment as local
-          docker compose exec -T web pytest --maxfail=1 --disable-warnings -q --cov=.
+          docker-compose run --rm web pytest --maxfail=1 --disable-warnings -q --cov=.
 
-      - name: Tear down
+      - name: Tear down Docker Compose
         if: always()
         run: |
-          docker compose down --volumes
+          docker-compose down --volumes --remove-orphans
