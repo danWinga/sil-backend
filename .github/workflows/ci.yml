@@ -10,7 +10,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    # Start Postgres & RabbitMQ for pytest to connect to
     services:
       postgres:
         image: postgres:15
@@ -37,11 +36,9 @@ jobs:
           --health-retries=5
 
     env:
-      # point Django at the above services
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
       RABBITMQ_URL: amqp://guest:guest@localhost:5672/
-      # disable OIDC integration tests
-      DEBUG: "True"
+      DEBUG: "True"   # enable BasicAuth & skip OIDC in tests
 
     steps:
       - name: Checkout code
@@ -57,8 +54,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install poetry
 
+      - name: Export requirements.txt
+        run: |
+          poetry export \
+            --dev \
+            --format=requirements.txt \
+            --without-hashes \
+            -o requirements.txt
+
       - name: Install dependencies
-        run: poetry install --no-interaction --no-ansi --no-root --with dev
+        run: pip install --upgrade pip && pip install -r requirements.txt
 
       - name: Lint with Black
         run: poetry run black --check .
