@@ -2,19 +2,21 @@
 
 from rest_framework import mixins, viewsets
 from rest_framework.permissions import IsAuthenticated
+
+from notifications.tasks import send_order_email, send_order_sms
+
 from .models import Order
 from .serializers import OrderCreateSerializer, OrderReadSerializer
-from notifications.tasks import send_order_sms, send_order_email
+
 
 class OrderViewSet(
-    mixins.CreateModelMixin,
-    mixins.ListModelMixin,
-    viewsets.GenericViewSet
+    mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet
 ):
     """
     POST /api/orders/ → creates an order + fires async SMS+email.
     GET  /api/orders/ → list the authenticated user's orders.
     """
+
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):

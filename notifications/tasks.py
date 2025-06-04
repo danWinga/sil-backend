@@ -1,23 +1,27 @@
 # notifications/tasks.py
 
 import logging
+
+import africastalking
 from celery import shared_task
 from django.conf import settings
 from django.core.mail import send_mail
-import africastalking
+
 from orders.models import Order
 
 logger = logging.getLogger(__name__)
+
 
 def send_order_notification(order_id):
     """
     Synchronous helper for tests.
     """
-    order = (Order.objects
-                 .select_related("customer")
-                 .prefetch_related("items__product")
-                 .get(pk=order_id))
-    cust  = order.customer
+    order = (
+        Order.objects.select_related("customer")
+        .prefetch_related("items__product")
+        .get(pk=order_id)
+    )
+    cust = order.customer
     phone = (getattr(cust, "phone_number", "") or "").strip()
 
     # 1) SMS
@@ -67,7 +71,7 @@ def send_order_sms(self, order_id):
         )
         resp = africastalking.SMS.send(
             message=f"Hi {order.customer.username}, your order #{order.id} "
-                    f"for KES {order.total_price} is confirmed.",
+            f"for KES {order.total_price} is confirmed.",
             recipients=[phone],
         )
         logger.info("SMS sent for order %s: %s", order_id, resp)
@@ -82,17 +86,17 @@ def send_order_email(self, order_id):
     Async email task to admin.
     """
     logger.info("send_order_email CALLED for order %s", order_id)
-    order = (Order.objects
-                 .select_related("customer")
-                 .prefetch_related("items__product")
-                 .get(pk=order_id))
+    order = (
+        Order.objects.select_related("customer")
+        .prefetch_related("items__product")
+        .get(pk=order_id)
+    )
 
     items_str = "\n".join(
-        f"{i.quantity}×{i.product.name} = {i.line_price}"
-        for i in order.items.all()
+        f"{i.quantity}×{i.product.name} = {i.line_price}" for i in order.items.all()
     )
     subject = f"New Order #{order.id} Placed"
-    body    = (
+    body = (
         f"Customer: {order.customer.email}\n"
         f"Total: KES {order.total_price}\n\n"
         f"Items:\n{items_str}"

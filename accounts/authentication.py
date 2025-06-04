@@ -69,8 +69,8 @@
 
 # accounts/authentication.py
 
-import requests
 import jwt
+import requests
 from cachetools import TTLCache, cached
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -81,10 +81,14 @@ User = get_user_model()
 # cache the JWKS for 5 minutes
 _jwks_cache = TTLCache(maxsize=1, ttl=300)
 
+
 @cached(_jwks_cache)
 def fetch_jwks():
-    cfg = requests.get(f"{settings.OIDC_OP_ISSUER}/.well-known/openid-configuration", timeout=5).json()
+    cfg = requests.get(
+        f"{settings.OIDC_OP_ISSUER}/.well-known/openid-configuration", timeout=5
+    ).json()
     return requests.get(cfg["jwks_uri"], timeout=5).json()["keys"]
+
 
 class CustomOIDCBearerAuthentication(authentication.BaseAuthentication):
     """
@@ -141,7 +145,6 @@ class CustomOIDCBearerAuthentication(authentication.BaseAuthentication):
             raise exceptions.AuthenticationFailed("Token missing email claim")
         username = payload.get("preferred_username") or payload.get("sub")
         user, _ = User.objects.get_or_create(
-            email=email,
-            defaults={"username": username}
+            email=email, defaults={"username": username}
         )
         return (user, None)

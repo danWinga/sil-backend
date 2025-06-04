@@ -9,38 +9,69 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Category',
+            name="Category",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=255, unique=True)),
-                ('slug', models.SlugField(max_length=255, unique=True)),
-                ('lft', models.PositiveIntegerField(editable=False)),
-                ('rght', models.PositiveIntegerField(editable=False)),
-                ('tree_id', models.PositiveIntegerField(db_index=True, editable=False)),
-                ('level', models.PositiveIntegerField(editable=False)),
-                ('parent', mptt.fields.TreeForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='children', to='catalog.category')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=255, unique=True)),
+                ("slug", models.SlugField(max_length=255, unique=True)),
+                ("lft", models.PositiveIntegerField(editable=False)),
+                ("rght", models.PositiveIntegerField(editable=False)),
+                ("tree_id", models.PositiveIntegerField(db_index=True, editable=False)),
+                ("level", models.PositiveIntegerField(editable=False)),
+                (
+                    "parent",
+                    mptt.fields.TreeForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="children",
+                        to="catalog.category",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='Product',
+            name="Product",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=255)),
-                ('description', models.TextField(blank=True)),
-                ('price', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('categories', models.ManyToManyField(related_name='products', to='catalog.category')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=255)),
+                ("description", models.TextField(blank=True)),
+                ("price", models.DecimalField(decimal_places=2, max_digits=10)),
+                (
+                    "categories",
+                    models.ManyToManyField(
+                        related_name="products", to="catalog.category"
+                    ),
+                ),
             ],
             options={
-                'ordering': ['name'],
-                'indexes': [models.Index(fields=['name'], name='catalog_pro_name_f603c0_idx')],
+                "ordering": ["name"],
+                "indexes": [
+                    models.Index(fields=["name"], name="catalog_pro_name_f603c0_idx")
+                ],
             },
         ),
     ]

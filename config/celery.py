@@ -1,5 +1,6 @@
 # config/celery.py
 import os
+
 from celery import Celery
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
@@ -14,4 +15,3 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 
 # auto-discover @shared_task in your apps
 app.autodiscover_tasks()
-

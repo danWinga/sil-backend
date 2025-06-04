@@ -1,13 +1,16 @@
 # notifications/tests/test_notifications.py
 
-import pytest
 from decimal import Decimal
-from notifications.tasks import send_order_notification
-from orders.models import Order, OrderItem
-from catalog.models import Product
+
+import pytest
 from django.contrib.auth import get_user_model
 
+from catalog.models import Product
+from notifications.tasks import send_order_notification
+from orders.models import Order, OrderItem
+
 User = get_user_model()
+
 
 @pytest.fixture
 def order(db):
@@ -16,12 +19,10 @@ def order(db):
     p = Product.objects.create(name="X", price=Decimal("9.00"))
     order = Order.objects.create(customer=user)
     OrderItem.objects.create(
-        order=order,
-        product=p,
-        quantity=1,
-        unit_price=Decimal("9.00")
+        order=order, product=p, quantity=1, unit_price=Decimal("9.00")
     )
     return order
+
 
 def test_notification_task_runs_without_exception(monkeypatch, order):
     """
@@ -29,11 +30,13 @@ def test_notification_task_runs_without_exception(monkeypatch, order):
     """
     # Stub Africa's Talking initialization & SMS.send
     monkeypatch.setattr("africastalking.initialize", lambda **kw: None)
+
     class SMSStub:
         @staticmethod
         def send(message, recipients):
             # do nothing
             return {"status": "sent"}
+
     monkeypatch.setattr("africastalking.SMS", SMSStub)
 
     # Stub Django send_mail
