@@ -1,5 +1,5 @@
 # config/exceptions.py
-
+# for exception
 from rest_framework.exceptions import AuthenticationFailed, NotAuthenticated
 from rest_framework.views import exception_handler
 
