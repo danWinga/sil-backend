@@ -5,10 +5,7 @@ description = ""
 authors     = ["danwinga <danwinga@gmail.com>"]
 readme      = "README.md"
 
-# Disable packaging/installing the root project itself
-package-mode = false
-
-# Tell Poetry which directories to treat as installable packages
+# Tell Poetry which folders to treat as your modules
 packages = [
   { include = "config"        },
   { include = "accounts"      },
@@ -34,12 +31,12 @@ africastalking       = "^1.2.9"
 pika                 = "^1.3.2"
 
 [tool.poetry.group.dev.dependencies]
-pytest               = "^8.3.5"
-pytest-django        = "^4.11.1"
-pytest-cov           = "^6.1.1"
-pytest-mock          = "^3.14.1"
-pytest-celery        = "^1.2.0"
+pytest        = "^8.3.5"
+pytest-django = "^4.11.1"
+pytest-cov    = "^6.1.1"
+pytest-mock   = "^3.14.1"
+pytest-celery = "^1.2.0"
 
 [build-system]
-requires    = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires       = ["poetry-core"]
+build-backend  = "poetry.core.masonry.api"
