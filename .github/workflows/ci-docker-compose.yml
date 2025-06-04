@@ -1,0 +1,51 @@
+name: CI via Docker Compose
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy example env
+        run: |
+          cp .env.example .env
+
+      - name: Start services with Docker Compose
+        # use the built-in docker compose (v2) CLI
+        run: |
+          docker compose up -d --build
+
+      - name: Wait for Postgres
+        run: |
+          until docker compose exec -T postgres pg_isready -U postgres; do
+            echo "Waiting for Postgres…"
+            sleep 1
+          done
+
+      - name: Wait for RabbitMQ
+        run: |
+          until docker compose exec -T rabbitmq rabbitmqctl status; do
+            echo "Waiting for RabbitMQ…"
+            sleep 1
+          done
+
+      - name: Run migrations
+        run: |
+          docker compose exec -T web python manage.py migrate --noinput
+
+      - name: Run test suite
+        run: |
+          # run inside the web container so you get the same environment as local
+          docker compose exec -T web pytest --maxfail=1 --disable-warnings -q --cov=.
+
+      - name: Tear down
+        if: always()
+        run: |
+          docker compose down --volumes
