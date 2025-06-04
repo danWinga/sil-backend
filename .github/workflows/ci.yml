@@ -50,7 +50,7 @@ jobs:
       - name: Setup Python & Poetry
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Install Poetry
         run: |
