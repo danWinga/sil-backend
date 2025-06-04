@@ -10,6 +10,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    # Services for Django & Celery tests
     services:
       postgres:
         image: postgres:15
@@ -38,7 +39,7 @@ jobs:
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
       RABBITMQ_URL: amqp://guest:guest@localhost:5672/
-      DEBUG: "True"   # enable BasicAuth & skip OIDC in tests
+      DEBUG: "True"  # enable BasicAuth / skip OIDC in tests
 
     steps:
       - name: Checkout code
@@ -54,6 +55,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install poetry
 
+      # ← begin Option A
       - name: Export requirements.txt
         run: |
           poetry export \
@@ -63,7 +65,10 @@ jobs:
             -o requirements.txt
 
       - name: Install dependencies
-        run: pip install --upgrade pip && pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      # ← end Option A
 
       - name: Lint with Black
         run: poetry run black --check .
