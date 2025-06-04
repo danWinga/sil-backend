@@ -1,0 +1,17 @@
+[flake8]
+max-line-length = 120
+
+# ignore line-too-long, imports-not-at-top, imported-but-unused
+extend-ignore = E501,E402,F401
+
+exclude =
+    .git,
+    __pycache__,
+    venv,
+    .venv,
+    docker-compose.yml,
+    notes.txt,
+    ci.yml,
+    .github,
+    keycloak/realm-export.json,
+    */migrations/*
