@@ -4,6 +4,14 @@ version = "0.1.0"
 description = ""
 authors = ["danwinga <danwinga@gmail.com>"]
 readme = "README.md"
+packages = [
+  { include = "config"        },
+  { include = "accounts"      },
+  { include = "catalog"       },
+  { include = "orders"        },
+  { include = "notifications" },
+]
+
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -29,14 +37,6 @@ requests = "^2.32.3"
 pytest-mock = "^3.14.1"
 pytest-celery = "^1.2.0"
 
-
-packages = [
-  { include = "config"        },
-  { include = "accounts"      },
-  { include = "catalog"       },
-  { include = "orders"        },
-  { include = "notifications" },
-]
 
 
 
