@@ -3,25 +3,23 @@
 name: CI via Docker Compose
 
 on:
-  push: { branches: [ main ] }
-  pull_request: { branches: [ main ] }
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15
-        # ... healthcheck etc ...
-      rabbitmq:
-        image: rabbitmq:3-management
-        # ... healthcheck etc ...
+    # We do NOT declare `services:` here
+    # so GitHub will not start its own Postgres/RabbitMQ on 5432/5672.
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Create .env from Secrets
+      - name: Create .env from GitHub Secrets
         run: |
           cat > .env <<EOF
           SECRET_KEY=${{ secrets.SECRET_KEY }}
@@ -48,58 +46,37 @@ jobs:
           ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
           EOF
 
-      - name: Build Docker images
+      - name: Build images
         run: |
-          docker compose \
-            -f docker-compose.yml \
-            -f .github/docker-compose.ci.yml \
-            build
+          docker compose build
 
-      - name: Start Postgres & RabbitMQ
+      - name: Bring up Postgres & RabbitMQ
         run: |
-          docker compose \
-            -f docker-compose.yml \
-            -f .github/docker-compose.ci.yml \
-            up -d postgres rabbitmq
+          docker compose up -d postgres rabbitmq
 
       - name: Wait for Postgres
         run: |
-          until docker compose \
-            -f docker-compose.yml \
-            -f .github/docker-compose.ci.yml \
-            exec -T postgres pg_isready -U postgres; do
-            echo "Waiting for Postgres..."
+          until docker compose exec -T postgres pg_isready -U postgres; do
+            echo "Waiting for Postgres…"
             sleep 1
           done
 
       - name: Wait for RabbitMQ
         run: |
-          until docker compose \
-            -f docker-compose.yml \
-            -f .github/docker-compose.ci.yml \
-            exec -T rabbitmq rabbitmqctl status; do
-            echo "Waiting for RabbitMQ..."
+          until docker compose exec -T rabbitmq rabbitmqctl status; do
+            echo "Waiting for RabbitMQ…"
             sleep 1
           done
 
       - name: Run migrations
         run: |
-          docker compose \
-            -f docker-compose.yml \
-            -f .github/docker-compose.ci.yml \
-            run --rm web python manage.py migrate --noinput
+          docker compose run --rm web python manage.py migrate --noinput
 
-      - name: Run tests
+      - name: Run test suite
         run: |
-          docker compose \
-            -f docker-compose.yml \
-            -f .github/docker-compose.ci.yml \
-            run --rm web pytest --maxfail=1 --disable-warnings -q --cov=.
+          docker compose run --rm web pytest --maxfail=1 --disable-warnings -q --cov=.
 
       - name: Tear down
         if: always()
         run: |
-          docker compose \
-            -f docker-compose.yml \
-            -f .github/docker-compose.ci.yml \
-            down --volumes --remove-orphans
+          docker compose down --volumes --remove-orphans
