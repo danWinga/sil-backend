@@ -26,7 +26,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Determine image tag (use commit SHA)
+      - name: Determine IMAGE_TAG (commit SHA)
         run: echo "IMAGE_TAG=${GITHUB_SHA}" >> $GITHUB_ENV
 
       - name: Install oc CLI
@@ -40,7 +40,7 @@ jobs:
           oc login ${{ secrets.OPENSHIFT_SERVER }} \
             --token="${{ secrets.OPENSHIFT_TOKEN }}" \
             --insecure-skip-tls-verify
-          oc project ${{ env.PROJECT }}
+          oc project $PROJECT
 
       - name: Create/Update Kubernetes Secret
         run: |
@@ -55,9 +55,9 @@ jobs:
             SECRET_KEY:            "${{ secrets.SECRET_KEY }}"
             DEBUG:                 "False"
             ALLOWED_HOSTS:         "*"
-            # point at Bitnami Postgres release 'si-postgres'
+            # Correct Postgres hostname from Bitnami chart
             DATABASE_URL:          "postgres://postgres:postgres@si-postgres-postgresql:5432/postgres"
-            # point at Bitnami RabbitMQ release 'si-rabbitmq'
+            # Correct RabbitMQ hostname from Bitnami chart
             RABBITMQ_URL:          "amqp://guest:guest@si-rabbitmq:5672/"
             BROKER_URL:            "amqp://guest:guest@si-rabbitmq:5672/"
             CELERY_BROKER_URL:     "amqp://guest:guest@si-rabbitmq:5672/"
@@ -69,6 +69,16 @@ jobs:
             EMAIL_HOST_PASSWORD:   "${{ secrets.EMAIL_HOST_PASSWORD }}"
             ADMIN_EMAIL:           "${{ secrets.ADMIN_EMAIL }}"
           EOF
+
+      - name: Run Django migrations as a one‐off Job
+        run: |
+          oc run migrate-${{ github.run_id }} \
+            --namespace=${NAMESPACE} \
+            --image=${IMAGE_REPO}:${IMAGE_TAG} \
+            --restart=Never \
+            --command -- python manage.py migrate --noinput
+          # wait for it to complete
+          oc wait pod/migrate-${{ github.run_id }} --for=condition=Succeeded --timeout=120s
 
       - name: Set up Helm
         uses: azure/setup-helm@v3
