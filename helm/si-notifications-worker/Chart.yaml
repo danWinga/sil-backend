@@ -1,0 +1,6 @@
+apiVersion: v2
+name: si-notifications-worker
+description: "Celery worker for SI notifications"
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
