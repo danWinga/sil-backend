@@ -16,7 +16,7 @@ env:
   SECRET_NAME: si-backend-secret
   CHART_API: helm/si-backend-api
   CHART_WORKER: helm/si-notifications-worker
-  IMAGE_REPO: ghcr.io/danwinga/si-backend   # hard-coded lowercase
+  IMAGE_REPO: ghcr.io/danwinga/si-backend
   IMAGE_TAG: latest
 
 jobs:
@@ -36,7 +36,7 @@ jobs:
       - name: Login to OpenShift
         run: |
           oc login ${{ secrets.OPENSHIFT_SERVER }} \
-            --token=${{ secrets.OPENSHIFT_TOKEN }} \
+            --token="${{ secrets.OPENSHIFT_TOKEN }}" \
             --insecure-skip-tls-verify
           oc project $PROJECT
 
@@ -50,16 +50,16 @@ jobs:
             namespace: $NAMESPACE
           type: Opaque
           stringData:
-            SECRET_KEY:       ${{ secrets.SECRET_KEY }}
-            DATABASE_URL:     ${{ secrets.DATABASE_URL }}
-            RABBITMQ_URL:     ${{ secrets.RABBITMQ_URL }}
-            AFRICAS_TALKING_USERNAME: ${{ secrets.AFRICAS_TALKING_USERNAME }}
-            AFRICAS_TALKING_API_KEY:  ${{ secrets.AFRICAS_TALKING_API_KEY }}
-            EMAIL_HOST:       ${{ secrets.EMAIL_HOST }}
-            EMAIL_PORT:       ${{ secrets.EMAIL_PORT }}
-            EMAIL_HOST_USER:  ${{ secrets.EMAIL_HOST_USER }}
-            EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
-            ADMIN_EMAIL:      ${{ secrets.ADMIN_EMAIL }}
+            SECRET_KEY:       "${{ secrets.SECRET_KEY }}"
+            DATABASE_URL:     "${{ secrets.DATABASE_URL }}"
+            RABBITMQ_URL:     "${{ secrets.RABBITMQ_URL }}"
+            AFRICAS_TALKING_USERNAME: "${{ secrets.AFRICAS_TALKING_USERNAME }}"
+            AFRICAS_TALKING_API_KEY:  "${{ secrets.AFRICAS_TALKING_API_KEY }}"
+            EMAIL_HOST:       "${{ secrets.EMAIL_HOST }}"
+            EMAIL_PORT:       "${{ secrets.EMAIL_PORT }}"
+            EMAIL_HOST_USER:  "${{ secrets.EMAIL_HOST_USER }}"
+            EMAIL_HOST_PASSWORD: "${{ secrets.EMAIL_HOST_PASSWORD }}"
+            ADMIN_EMAIL:      "${{ secrets.ADMIN_EMAIL }}"
           EOF
 
       - name: Set up Helm
