@@ -40,7 +40,7 @@ jobs:
           oc login ${{ secrets.OPENSHIFT_SERVER }} \
             --token="${{ secrets.OPENSHIFT_TOKEN }}" \
             --insecure-skip-tls-verify
-          oc project $PROJECT
+          oc project ${PROJECT}
 
       - name: Create/Update Kubernetes Secret
         run: |
@@ -68,19 +68,32 @@ jobs:
             ADMIN_EMAIL:           "${{ secrets.ADMIN_EMAIL }}"
           EOF
 
-      - name: Cleanup previous migration pod
+      - name: Cleanup old migrate job
         run: |
-          oc delete pod migrate-${{ github.run_id }} -n ${NAMESPACE} --ignore-not-found
+          oc delete job migrate-${{ github.run_id }} -n ${NAMESPACE} --ignore-not-found
 
-      - name: Run Django migrations as a one-off Pod
+      - name: Run Django migrations via Job
         run: |
-          oc run migrate-${{ github.run_id }} \
-            --namespace=${NAMESPACE} \
-            --image=${IMAGE_REPO}:${IMAGE_TAG} \
-            --restart=Never \
-            --command -- python manage.py migrate --noinput
-          oc wait pod/migrate-${{ github.run_id }} \
-            --for=condition=Succeeded --timeout=120s
+          cat <<EOF | oc apply -f -
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: migrate-${{ github.run_id }}
+            namespace: ${NAMESPACE}
+          spec:
+            backoffLimit: 1
+            template:
+              spec:
+                containers:
+                  - name: migrate
+                    image: ${IMAGE_REPO}:${IMAGE_TAG}
+                    envFrom:
+                      - secretRef:
+                          name: ${SECRET_NAME}
+                    command: ["python","manage.py","migrate","--noinput"]
+                restartPolicy: OnFailure
+          EOF
+          oc wait job migrate-${{ github.run_id }} -n ${NAMESPACE} --for=condition=complete --timeout=120s
 
       - name: Set up Helm
         uses: azure/setup-helm@v3
