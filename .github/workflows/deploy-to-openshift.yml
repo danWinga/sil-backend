@@ -55,6 +55,8 @@ jobs:
             ALLOWED_HOSTS:    "*"
             DATABASE_URL:     "${{ secrets.DATABASE_URL }}"
             RABBITMQ_URL:     "amqp://guest:guest@si-rabbitmq:5672/"
+            BROKER_URL:       "amqp://guest:guest@si-rabbitmq:5672/"
+            CELERY_BROKER_URL:"amqp://guest:guest@si-rabbitmq:5672/"
             AFRICAS_TALKING_USERNAME: "${{ secrets.AFRICAS_TALKING_USERNAME }}"
             AFRICAS_TALKING_API_KEY:  "${{ secrets.AFRICAS_TALKING_API_KEY }}"
             EMAIL_HOST:       "${{ secrets.EMAIL_HOST }}"
