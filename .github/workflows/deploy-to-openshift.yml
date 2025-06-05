@@ -1,8 +1,11 @@
+# .github/workflows/deploy-to-openshift.yml
+
 name: CD → OpenShift via Helm
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -17,9 +20,6 @@ jobs:
       PROJECT:      danwinga-dev
       NAMESPACE:    danwinga-dev
       SECRET_NAME:  si-backend-secret
-      CHART_KEYC:   helm/keycloak
-      CHART_API:    helm/si-backend-api
-      CHART_WORKER: helm/si-notifications-worker
       IMAGE_REPO:   ghcr.io/danwinga/si-backend
 
     steps:
@@ -89,12 +89,13 @@ jobs:
           helm repo add bitnami https://charts.bitnami.com/bitnami
           helm repo update
 
-      - name: Update Keycloak chart dependencies
-        run: helm dependency update ${CHART_KEYC}
+      - name: Pull Keycloak chart dependency
+        run: helm dependency update
+        working-directory: helm/keycloak
 
       - name: Deploy/Upgrade Keycloak chart
         run: |
-          helm upgrade --install si-keycloak ${CHART_KEYC} \
+          helm upgrade --install si-keycloak helm/keycloak \
             --namespace ${NAMESPACE} \
             --set keycloak.auth.adminUser=${{ secrets.KC_ADMIN_USER }} \
             --set keycloak.auth.adminPassword=${{ secrets.KC_ADMIN_PASSWORD }} \
@@ -129,7 +130,7 @@ jobs:
 
       - name: Deploy/Upgrade API chart
         run: |
-          helm upgrade --install si-api ${CHART_API} \
+          helm upgrade --install si-api helm/si-backend-api \
             --namespace ${NAMESPACE} \
             --set image.repository=${IMAGE_REPO} \
             --set image.tag=${IMAGE_TAG} \
@@ -137,7 +138,7 @@ jobs:
 
       - name: Deploy/Upgrade Worker chart
         run: |
-          helm upgrade --install si-worker ${CHART_WORKER} \
+          helm upgrade --install si-worker helm/si-notifications-worker \
             --namespace ${NAMESPACE} \
             --set image.repository=${IMAGE_REPO} \
             --set image.tag=${IMAGE_TAG} \
