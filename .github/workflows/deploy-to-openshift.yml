@@ -51,15 +51,17 @@ jobs:
           type: Opaque
           stringData:
             SECRET_KEY:       "${{ secrets.SECRET_KEY }}"
+            DEBUG:            "False"
+            ALLOWED_HOSTS:    "*"
             DATABASE_URL:     "${{ secrets.DATABASE_URL }}"
-            RABBITMQ_URL:     "${{ secrets.RABBITMQ_URL }}"
+            RABBITMQ_URL:     "amqp://guest:guest@si-rabbitmq:5672/"
             AFRICAS_TALKING_USERNAME: "${{ secrets.AFRICAS_TALKING_USERNAME }}"
             AFRICAS_TALKING_API_KEY:  "${{ secrets.AFRICAS_TALKING_API_KEY }}"
             EMAIL_HOST:       "${{ secrets.EMAIL_HOST }}"
             EMAIL_PORT:       "${{ secrets.EMAIL_PORT }}"
             EMAIL_HOST_USER:  "${{ secrets.EMAIL_HOST_USER }}"
             EMAIL_HOST_PASSWORD: "${{ secrets.EMAIL_HOST_PASSWORD }}"
-            ADMIN_EMAIL:      "${{ secrets.ADMIN_EMAIL }}"
+            ADMIN_EMAIL:      "{{ secrets.ADMIN_EMAIL }}"
           EOF
 
       - name: Set up Helm
