@@ -2,8 +2,7 @@ name: CD → OpenShift via Helm
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -15,12 +14,13 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      PROJECT: danwinga-dev
-      NAMESPACE: danwinga-dev
-      SECRET_NAME: si-backend-secret
-      CHART_API: helm/si-backend-api
+      PROJECT:      danwinga-dev
+      NAMESPACE:    danwinga-dev
+      SECRET_NAME:  si-backend-secret
+      CHART_KEYC:   helm/keycloak
+      CHART_API:    helm/si-backend-api
       CHART_WORKER: helm/si-notifications-worker
-      IMAGE_REPO: ghcr.io/danwinga/si-backend
+      IMAGE_REPO:   ghcr.io/danwinga/si-backend
 
     steps:
       - name: Checkout code
@@ -42,7 +42,7 @@ jobs:
             --insecure-skip-tls-verify
           oc project ${PROJECT}
 
-      - name: Create/Update Kubernetes Secret
+      - name: Create/Update si-backend-secret
         run: |
           oc apply -f - <<EOF
           apiVersion: v1
@@ -66,7 +66,39 @@ jobs:
             EMAIL_HOST_USER:       "${{ secrets.EMAIL_HOST_USER }}"
             EMAIL_HOST_PASSWORD:   "${{ secrets.EMAIL_HOST_PASSWORD }}"
             ADMIN_EMAIL:           "${{ secrets.ADMIN_EMAIL }}"
+            # OIDC / Keycloak
+            OIDC_OP_ISSUER:        "${{ secrets.OIDC_OP_ISSUER }}"
+            OIDC_RP_CLIENT_ID:     "${{ secrets.OIDC_RP_CLIENT_ID }}"
+            OIDC_RP_CLIENT_SECRET: "${{ secrets.OIDC_RP_CLIENT_SECRET }}"
           EOF
+
+      - name: Create/update keycloak-realm ConfigMap
+        run: |
+          oc create configmap keycloak-realm \
+            --from-file=realm.json=keycloak/realm-export.json \
+            --namespace=${NAMESPACE} \
+            --dry-run=client -o yaml \
+          | oc apply -f -
+
+      - name: Set up Helm & repos
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.12.0
+
+      - name: Add Bitnami repo & update
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo update
+
+      - name: Update Keycloak chart dependencies
+        run: helm dependency update ${CHART_KEYC}
+
+      - name: Deploy/Upgrade Keycloak chart
+        run: |
+          helm upgrade --install si-keycloak ${CHART_KEYC} \
+            --namespace ${NAMESPACE} \
+            --set keycloak.auth.adminUser=${{ secrets.KC_ADMIN_USER }} \
+            --set keycloak.auth.adminPassword=${{ secrets.KC_ADMIN_PASSWORD }}
 
       - name: Cleanup old migrate job
         run: |
@@ -95,16 +127,6 @@ jobs:
           EOF
           oc wait job migrate-${{ github.run_id }} -n ${NAMESPACE} --for=condition=complete --timeout=120s
 
-      - name: Set up Helm
-        uses: azure/setup-helm@v3
-        with:
-          version: v3.12.0
-
-      - name: Add Bitnami repo & update
-        run: |
-          helm repo add bitnami https://charts.bitnami.com/bitnami
-          helm repo update
-
       - name: Deploy/Upgrade API chart
         run: |
           helm upgrade --install si-api ${CHART_API} \
@@ -123,5 +145,6 @@ jobs:
 
       - name: Wait for rollout
         run: |
-          oc rollout status deployment/si-api   -n ${NAMESPACE} --timeout=2m
-          oc rollout status deployment/si-worker -n ${NAMESPACE} --timeout=2m
+          oc rollout status deployment/si-keycloak -n ${NAMESPACE} --timeout=2m
+          oc rollout status deployment/si-api      -n ${NAMESPACE} --timeout=2m
+          oc rollout status deployment/si-worker   -n ${NAMESPACE} --timeout=2m
