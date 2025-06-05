@@ -1,8 +1,11 @@
+# .github/workflows/deploy-to-openshift.yml
+
 name: CD → OpenShift via Helm
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -72,7 +75,7 @@ jobs:
             OIDC_RP_CLIENT_SECRET: "${{ secrets.OIDC_RP_CLIENT_SECRET }}"
           EOF
 
-      - name: Create/update keycloak-realm ConfigMap
+      - name: Create/Update keycloak-realm ConfigMap
         run: |
           oc create configmap keycloak-realm \
             --from-file=realm.json=keycloak/realm-export.json \
@@ -80,7 +83,7 @@ jobs:
             --dry-run=client -o yaml \
           | oc apply -f -
 
-      - name: Set up Helm & repos
+      - name: Set up Helm
         uses: azure/setup-helm@v3
         with:
           version: v3.12.0
@@ -98,7 +101,8 @@ jobs:
           helm upgrade --install si-keycloak ${CHART_KEYC} \
             --namespace ${NAMESPACE} \
             --set keycloak.auth.adminUser=${{ secrets.KC_ADMIN_USER }} \
-            --set keycloak.auth.adminPassword=${{ secrets.KC_ADMIN_PASSWORD }}
+            --set keycloak.auth.adminPassword=${{ secrets.KC_ADMIN_PASSWORD }} \
+            --set keycloak.postgresql.enabled=true
 
       - name: Cleanup old migrate job
         run: |
