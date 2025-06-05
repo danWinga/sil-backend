@@ -1,0 +1,14 @@
+# helm/keycloak/Chart.yaml
+apiVersion: v2
+name: si-keycloak
+description: A wrapper chart to deploy Keycloak with custom realm import
+type: application
+version: 0.1.0
+appVersion: "21.1.2"
+
+dependencies:
+  - name: keycloak
+    version: "19.1.0"                   # adjust to a compatible chart version
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: keycloak.enabled
+
