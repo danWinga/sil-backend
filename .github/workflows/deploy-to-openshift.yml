@@ -1,5 +1,3 @@
-# .github/workflows/deploy-to-openshift.yml
-
 name: CD → OpenShift via Helm
 
 on:
@@ -12,22 +10,24 @@ permissions:
   contents: read
   id-token: write
 
-env:
-  PROJECT: danwinga-dev
-  NAMESPACE: danwinga-dev
-  SECRET_NAME: si-backend-secret
-  CHART_API: helm/si-backend-api
-  CHART_WORKER: helm/si-notifications-worker
-  IMAGE_REPO: ghcr.io/danwinga/si-backend
-  IMAGE_TAG: latest
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    env:
+      PROJECT: danwinga-dev
+      NAMESPACE: danwinga-dev
+      SECRET_NAME: si-backend-secret
+      CHART_API: helm/si-backend-api
+      CHART_WORKER: helm/si-notifications-worker
+      IMAGE_REPO: ghcr.io/danwinga/si-backend
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Determine image tag (use commit SHA)
+        run: echo "IMAGE_TAG=${GITHUB_SHA}" >> $GITHUB_ENV
 
       - name: Install oc CLI
         run: |
@@ -40,7 +40,7 @@ jobs:
           oc login ${{ secrets.OPENSHIFT_SERVER }} \
             --token="${{ secrets.OPENSHIFT_TOKEN }}" \
             --insecure-skip-tls-verify
-          oc project $PROJECT
+          oc project ${{ env.PROJECT }}
 
       - name: Create/Update Kubernetes Secret
         run: |
@@ -48,16 +48,16 @@ jobs:
           apiVersion: v1
           kind: Secret
           metadata:
-            name: $SECRET_NAME
-            namespace: $NAMESPACE
+            name: ${SECRET_NAME}
+            namespace: ${NAMESPACE}
           type: Opaque
           stringData:
             SECRET_KEY:            "${{ secrets.SECRET_KEY }}"
             DEBUG:                 "False"
             ALLOWED_HOSTS:         "*"
-            # Point at the Bitnami PostgreSQL service
+            # point at Bitnami Postgres release 'si-postgres'
             DATABASE_URL:          "postgres://postgres:postgres@si-postgres-postgresql:5432/postgres"
-            # Point at the Bitnami RabbitMQ service
+            # point at Bitnami RabbitMQ release 'si-rabbitmq'
             RABBITMQ_URL:          "amqp://guest:guest@si-rabbitmq:5672/"
             BROKER_URL:            "amqp://guest:guest@si-rabbitmq:5672/"
             CELERY_BROKER_URL:     "amqp://guest:guest@si-rabbitmq:5672/"
@@ -82,21 +82,21 @@ jobs:
 
       - name: Deploy/Upgrade API chart
         run: |
-          helm upgrade --install si-api $CHART_API \
-            --namespace $NAMESPACE \
-            --set image.repository=$IMAGE_REPO \
-            --set image.tag=$IMAGE_TAG \
-            --set secretName=$SECRET_NAME
+          helm upgrade --install si-api ${CHART_API} \
+            --namespace ${NAMESPACE} \
+            --set image.repository=${IMAGE_REPO} \
+            --set image.tag=${IMAGE_TAG} \
+            --set secretName=${SECRET_NAME}
 
       - name: Deploy/Upgrade Worker chart
         run: |
-          helm upgrade --install si-worker $CHART_WORKER \
-            --namespace $NAMESPACE \
-            --set image.repository=$IMAGE_REPO \
-            --set image.tag=$IMAGE_TAG \
-            --set secretName=$SECRET_NAME
+          helm upgrade --install si-worker ${CHART_WORKER} \
+            --namespace ${NAMESPACE} \
+            --set image.repository=${IMAGE_REPO} \
+            --set image.tag=${IMAGE_TAG} \
+            --set secretName=${SECRET_NAME}
 
       - name: Wait for rollout
         run: |
-          oc rollout status deployment/si-api   -n $NAMESPACE --timeout=2m
-          oc rollout status deployment/si-worker -n $NAMESPACE --timeout=2m
+          oc rollout status deployment/si-api   -n ${NAMESPACE} --timeout=2m
+          oc rollout status deployment/si-worker -n ${NAMESPACE} --timeout=2m
