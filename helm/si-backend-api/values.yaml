@@ -1,5 +1,5 @@
 image:
-  repository: ghcr.io/${REPO_OWNER}/si-backend
+  repository: ghcr.io/danwinga/si-backend
   tag: latest
 
 secretName: si-backend-secret
