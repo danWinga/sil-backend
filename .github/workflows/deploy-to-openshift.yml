@@ -2,6 +2,8 @@ name: CD → OpenShift via Helm
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
   workflow_dispatch:
