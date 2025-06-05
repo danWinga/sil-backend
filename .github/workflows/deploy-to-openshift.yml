@@ -1,11 +1,8 @@
-# .github/workflows/deploy-to-openshift.yml
-
 name: CD → OpenShift via Helm
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -69,7 +66,6 @@ jobs:
             EMAIL_HOST_USER:       "${{ secrets.EMAIL_HOST_USER }}"
             EMAIL_HOST_PASSWORD:   "${{ secrets.EMAIL_HOST_PASSWORD }}"
             ADMIN_EMAIL:           "${{ secrets.ADMIN_EMAIL }}"
-            # OIDC / Keycloak
             OIDC_OP_ISSUER:        "${{ secrets.OIDC_OP_ISSUER }}"
             OIDC_RP_CLIENT_ID:     "${{ secrets.OIDC_RP_CLIENT_ID }}"
             OIDC_RP_CLIENT_SECRET: "${{ secrets.OIDC_RP_CLIENT_SECRET }}"

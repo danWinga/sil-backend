@@ -1,33 +1,26 @@
-# helm/keycloak/values.yaml
-
-# Enable or disable this entire Keycloak umbrella chart
 enabled: true
 
-# Settings for the Bitnami 'keycloak' subchart
 keycloak:
   enabled: true
   replicaCount: 1
 
-  # Use the Quay Keycloak 21.1.2 image
   image:
     registry: quay.io
     repository: keycloak/keycloak
     tag: "21.1.2"
     pullPolicy: IfNotPresent
 
-  # Use built-in H2 database for dev/test (no persistence)
+  # Use bundled Postgres
   postgresql:
-    enabled: false
+    enabled: true
 
   persistence:
     enabled: false
 
-  # Admin console credentials
   auth:
-    adminUser: admin
-    adminPassword: admin
+    adminUser: admin            # override via --set in CD
+    adminPassword: admin        # override via --set in CD
 
-  # Environment variables to import your realm & enable health/metrics
   extraEnvVars:
     - name: KC_IMPORT
       value: /tmp/realm.json
@@ -36,7 +29,6 @@ keycloak:
     - name: KC_METRICS_ENABLED
       value: "true"
 
-  # Mount the ConfigMap 'keycloak-realm' as /tmp/realm.json
   extraVolumes:
     - name: realm-json
       configMap:
@@ -47,19 +39,8 @@ keycloak:
       mountPath: /tmp/realm.json
       subPath: realm.json
 
-  # Service settings (ClusterIP only; Route created separately)
-  service:
-    type: ClusterIP
-    port: 8080
-
-  # Do not create ingress/ingressRoute in this chart
-  ingress:
-    enabled: false
-
-# Create an OpenShift Route
+# OpenShift Route settings
 route:
   enabled: true
-  # leave host blank to auto-generate <name>-<namespace>.<cluster>
-  host: ""
   tls:
     termination: edge

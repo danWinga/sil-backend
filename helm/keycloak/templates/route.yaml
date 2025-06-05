@@ -1,17 +1,16 @@
-# helm/keycloak/templates/route.yaml
 {{- if .Values.route.enabled }}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: {{ include "keycloak.fullname" . }}
+  name: {{ include "si-keycloak.fullname" . }}
   labels:
-    app: {{ include "keycloak.fullname" . }}
+    app: {{ include "si-keycloak.fullname" . }}
 spec:
   to:
     kind: Service
-    name: {{ include "keycloak.fullname" . }}-http
+    name: {{ include "si-keycloak.fullname" . }}-http
   port:
     targetPort: http
   tls:
-    termination: {{ .Values.route.tls.termination | default "edge" }}
+    termination: {{ .Values.route.tls.termination }}
 {{- end }}
