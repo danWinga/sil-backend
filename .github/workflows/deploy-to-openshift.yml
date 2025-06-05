@@ -4,8 +4,7 @@ name: CD → OpenShift via Helm
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -20,7 +19,7 @@ jobs:
       PROJECT:      danwinga-dev
       NAMESPACE:    danwinga-dev
       SECRET_NAME:  si-backend-secret
-      IMAGE_REPO:   ghcr.io/danwinga/si-backend
+      IMAGE_REPO:   ghcr.io/${{ github.repository_owner }}/si-backend
 
     steps:
       - name: Checkout code
@@ -55,10 +54,10 @@ jobs:
             SECRET_KEY:            "${{ secrets.SECRET_KEY }}"
             DEBUG:                 "False"
             ALLOWED_HOSTS:         "*"
-            DATABASE_URL:          "postgres://postgres:postgres@si-postgres-postgresql:5432/postgres"
-            RABBITMQ_URL:          "amqp://guest:guest@si-rabbitmq:5672/"
-            BROKER_URL:            "amqp://guest:guest@si-rabbitmq:5672/"
-            CELERY_BROKER_URL:     "amqp://guest:guest@si-rabbitmq:5672/"
+            DATABASE_URL:          "${{ secrets.DATABASE_URL }}"
+            RABBITMQ_URL:          "${{ secrets.RABBITMQ_URL }}"
+            BROKER_URL:            "${{ secrets.RABBITMQ_URL }}"
+            CELERY_BROKER_URL:     "${{ secrets.RABBITMQ_URL }}"
             AFRICAS_TALKING_USERNAME: "${{ secrets.AFRICAS_TALKING_USERNAME }}"
             AFRICAS_TALKING_API_KEY:  "${{ secrets.AFRICAS_TALKING_API_KEY }}"
             EMAIL_HOST:            "${{ secrets.EMAIL_HOST }}"
@@ -89,24 +88,49 @@ jobs:
           helm repo add bitnami https://charts.bitnami.com/bitnami
           helm repo update
 
-      - name: Pull Keycloak chart dependency
-        run: helm dependency update
-        working-directory: helm/keycloak
-
-      - name: Deploy/Upgrade Keycloak chart
+      - name: Deploy/Upgrade Postgres
         run: |
-          helm upgrade --install si-keycloak helm/keycloak \
+          helm upgrade --install si-postgres bitnami/postgresql \
             --namespace ${NAMESPACE} \
-            --set keycloak.auth.adminUser=${{ secrets.KC_ADMIN_USER }} \
-            --set keycloak.auth.adminPassword=${{ secrets.KC_ADMIN_PASSWORD }} \
-            --set keycloak.postgresql.enabled=true
+            --set global.postgresql.auth.postgresPassword=postgres \
+            --set global.postgresql.auth.username=postgres \
+            --set global.postgresql.auth.database=postgres
 
-      - name: Cleanup old migrate job
+      - name: Deploy/Upgrade RabbitMQ
         run: |
-          oc delete job migrate-${{ github.run_id }} -n ${NAMESPACE} --ignore-not-found
+          helm upgrade --install si-rabbitmq bitnami/rabbitmq \
+            --namespace ${NAMESPACE} \
+            --set auth.username=guest \
+            --set auth.password=guest
+
+      - name: Deploy/Upgrade Keycloak (Bitnami chart)
+        run: |
+          helm upgrade --install si-keycloak bitnami/keycloak \
+            --namespace ${NAMESPACE} \
+            --set auth.adminUser=${{ secrets.KC_ADMIN_USER }} \
+            --set auth.adminPassword=${{ secrets.KC_ADMIN_PASSWORD }} \
+            --set-string extraEnvVars[0].name=KC_IMPORT \
+            --set-string extraEnvVars[0].value=/tmp/realm.json \
+            --set-string extraEnvVars[1].name=KC_HEALTH_ENABLED \
+            --set-string extraEnvVars[1].value=true \
+            --set-string extraEnvVars[2].name=KC_METRICS_ENABLED \
+            --set-string extraEnvVars[2].value=true \
+            --set postgresql.enabled=true \
+            --set persistence.enabled=false \
+            --set ingress.enabled=false \
+            --set service.type=ClusterIP \
+            --set service.port=8080 \
+            --set extraVolumes[0].name=realm-json \
+            --set extraVolumes[0].configMap.name=keycloak-realm \
+            --set extraVolumeMounts[0].name=realm-json \
+            --set extraVolumeMounts[0].mountPath=/tmp/realm.json
+
+      - name: Wait for Keycloak rollout
+        run: oc rollout status deployment/si-keycloak -n ${NAMESPACE} --timeout=2m
 
       - name: Run Django migrations via Job
         run: |
+          oc delete job migrate-${{ github.run_id }} -n ${NAMESPACE} --ignore-not-found
           cat <<EOF | oc apply -f -
           apiVersion: batch/v1
           kind: Job
@@ -121,8 +145,7 @@ jobs:
                   - name: migrate
                     image: ${IMAGE_REPO}:${IMAGE_TAG}
                     envFrom:
-                      - secretRef:
-                          name: ${SECRET_NAME}
+                      - secretRef: { name: ${SECRET_NAME} }
                     command: ["python","manage.py","migrate","--noinput"]
                 restartPolicy: OnFailure
           EOF
@@ -144,8 +167,7 @@ jobs:
             --set image.tag=${IMAGE_TAG} \
             --set secretName=${SECRET_NAME}
 
-      - name: Wait for rollout
+      - name: Wait for API & Worker rollouts
         run: |
-          oc rollout status deployment/si-keycloak -n ${NAMESPACE} --timeout=2m
-          oc rollout status deployment/si-api      -n ${NAMESPACE} --timeout=2m
-          oc rollout status deployment/si-worker   -n ${NAMESPACE} --timeout=2m
+          oc rollout status deployment/si-api    -n ${NAMESPACE} --timeout=2m
+          oc rollout status deployment/si-worker -n ${NAMESPACE} --timeout=2m
