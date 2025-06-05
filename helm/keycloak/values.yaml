@@ -1,29 +1,23 @@
-enabled: true
-
 keycloak:
   enabled: true
-  replicaCount: 1
-
   image:
     registry: quay.io
     repository: keycloak/keycloak
     tag: "21.1.2"
     pullPolicy: IfNotPresent
 
-  # Use bundled Postgres
   postgresql:
-    enabled: true
-
+    enabled: false
   persistence:
     enabled: false
 
   auth:
-    adminUser: admin            # override via --set in CD
-    adminPassword: admin        # override via --set in CD
+    adminUser:  admin
+    adminPassword: admin
 
   extraEnvVars:
     - name: KC_IMPORT
-      value: /tmp/realm.json
+      value: "/tmp/realm.json"
     - name: KC_HEALTH_ENABLED
       value: "true"
     - name: KC_METRICS_ENABLED
@@ -39,8 +33,12 @@ keycloak:
       mountPath: /tmp/realm.json
       subPath: realm.json
 
-# OpenShift Route settings
+service:
+  type: ClusterIP
+  port: 8080
+
 route:
   enabled: true
+  host: ""
   tls:
     termination: edge
