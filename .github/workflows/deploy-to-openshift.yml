@@ -1,0 +1,92 @@
+name: CD → OpenShift via Helm
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT: danwinga-dev
+  NAMESPACE: danwinga-dev
+  SECRET_NAME: si-backend-secret
+  CHART_API: helm/si-backend-api
+  CHART_WORKER: helm/si-notifications-worker
+  IMAGE_REPO: ghcr.io/${{ github.repository_owner | lower }}/si-backend
+  IMAGE_TAG: latest
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    needs: publish
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install oc CLI
+        run: |
+          curl -L https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/linux/oc.tar.gz \
+            | tar -xz oc
+          sudo mv oc /usr/local/bin/
+
+      - name: Login to OpenShift
+        run: |
+          oc login ${{ secrets.OPENSHIFT_SERVER }} \
+            --token=${{ secrets.OPENSHIFT_TOKEN }} \
+            --insecure-skip-tls-verify
+          oc project ${{ env.PROJECT }}
+
+      - name: Create/Update secret
+        run: |
+          oc apply -f - <<EOF
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: ${SECRET_NAME}
+            namespace: ${NAMESPACE}
+          type: Opaque
+          stringData:
+            SECRET_KEY:       ${{ secrets.SECRET_KEY }}
+            DATABASE_URL:     ${{ secrets.DATABASE_URL }}
+            RABBITMQ_URL:     ${{ secrets.RABBITMQ_URL }}
+            AFRICAS_TALKING_USERNAME: ${{ secrets.AFRICAS_TALKING_USERNAME }}
+            AFRICAS_TALKING_API_KEY:  ${{ secrets.AFRICAS_TALKING_API_KEY }}
+            EMAIL_HOST:       ${{ secrets.EMAIL_HOST }}
+            EMAIL_PORT:       ${{ secrets.EMAIL_PORT }}
+            EMAIL_HOST_USER:  ${{ secrets.EMAIL_HOST_USER }}
+            EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
+            ADMIN_EMAIL:      ${{ secrets.ADMIN_EMAIL }}
+          EOF
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+
+      - name: Add Bitnami repo & update
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo update
+
+      - name: Deploy/Upgrade API chart
+        run: |
+          helm upgrade --install si-api ${CHART_API} \
+            --namespace ${NAMESPACE} \
+            --set image.repository=${IMAGE_REPO} \
+            --set image.tag=${IMAGE_TAG} \
+            --set secretName=${SECRET_NAME}
+
+      - name: Deploy/Upgrade Worker chart
+        run: |
+          helm upgrade --install si-worker ${CHART_WORKER} \
+            --namespace ${NAMESPACE} \
+            --set image.repository=${IMAGE_REPO} \
+            --set image.tag=${IMAGE_TAG} \
+            --set secretName=${SECRET_NAME}
+
+      - name: Wait for rollout
+        run: |
+          oc rollout status deployment/si-api   -n ${NAMESPACE} --timeout=2m
+          oc rollout status deployment/si-worker -n ${NAMESPACE} --timeout=2m
