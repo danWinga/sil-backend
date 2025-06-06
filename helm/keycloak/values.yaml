@@ -1,26 +1,21 @@
 # helm/keycloak/values.yaml
 
-# Override the official bitnami/keycloak chart
 image:
   registry: quay.io
   repository: keycloak/keycloak
   tag: "21.1.2"
   pullPolicy: IfNotPresent
 
-# We use our own Postgres; disable the bundled database
-postgresql:
-  enabled: false
+externalDatabase:
+  host: si-postgres-postgresql
+  port: 5432
+  user: postgres
+  database: postgres
+  existingSecret: si-postgres-postgresql
 
-# Ephemeral data (no PVC)
 persistence:
   enabled: false
 
-# Admin console creds (will come from Secret in CD )
-auth:
-  adminUser:  admin
-  adminPassword: admin
-
-# Tell Keycloak to auto-import the realm JSON
 extraEnvVars:
   - name: KC_IMPORT
     value: "/tmp/realm.json"
@@ -29,7 +24,6 @@ extraEnvVars:
   - name: KC_METRICS_ENABLED
     value: "true"
 
-# Mount our realm-export.json ConfigMap
 extraVolumes:
   - name: realm-json
     configMap:
@@ -40,18 +34,12 @@ extraVolumeMounts:
     mountPath: /tmp/realm.json
     subPath: realm.json
 
-# Expose only ClusterIP (we’ll create a Route in CD)
 service:
   type: ClusterIP
   port: 8080
 
-# Don’t create an Ingress (use Route)
-ingress:
-  enabled: false
-
-# Create an OpenShift Route for you
 route:
   enabled: true
-  host: ""       # let OpenShift auto-generate host
+  host: ""
   tls:
     termination: edge
