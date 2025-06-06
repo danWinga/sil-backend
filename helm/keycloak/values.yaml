@@ -1,33 +1,34 @@
-# Allow non-Bitnami images
+# Allow quay.io/keycloak/keycloak
 global:
   security:
     allowInsecureImages: true
 
-# Use Quay’s Keycloak image
 image:
   registry: quay.io
   repository: keycloak/keycloak
   tag: "21.1.2"
   pullPolicy: IfNotPresent
 
-# Disable the built-in Postgres subchart
+# Disable the internal Postgres
 postgresql:
   enabled: false
 
-# Use your external Postgres release “si-postgres”:
+# Point to external Bitnami Postgres release 'si-postgres'
 externalDatabase:
   host: si-postgres-postgresql
   port: 5432
   user: postgres
   database: postgres
-  # The Bitnami Postgres chart creates a Secret named si-postgres-postgresql
-  existingSecret: si-postgres-postgresql
+  # The Bitnami Postgres chart creates 'si-postgres-postgresql' Secret with key 'postgresql-password'
+  password:
+    secret: si-postgres-postgresql
+    key: postgresql-password
 
-# No persistence for demo
+# No persistent volume needed for demo
 persistence:
   enabled: false
 
-# Import your realm JSON on startup
+# Import your realm JSON
 extraEnvVars:
   - name: KC_IMPORT
     value: "/tmp/realm.json"
@@ -36,7 +37,7 @@ extraEnvVars:
   - name: KC_METRICS_ENABLED
     value: "true"
 
-# Mount the realm ConfigMap
+# Mount the realm JSON
 extraVolumes:
   - name: realm-json
     configMap:
@@ -47,7 +48,7 @@ extraVolumeMounts:
     mountPath: /tmp/realm.json
     subPath: realm.json
 
-# Expose as ClusterIP; Route is handled separately
+# Expose as ClusterIP; Route enabled below
 service:
   type: ClusterIP
   port: 8080
