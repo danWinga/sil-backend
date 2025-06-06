@@ -1,17 +1,22 @@
+# helm/keycloak/values.yaml
+
+# allow quay.io/keycloak/keycloak:21.1.2
+global:
+  security:
+    allowInsecureImages: true
+
 keycloak:
   enabled: true
-  # Use Bitnami Keycloak image
   image:
     registry: quay.io
     repository: keycloak/keycloak
     tag: "21.1.2"
     pullPolicy: IfNotPresent
 
-# Disable the built-in Postgres
+# disable embedded Postgres
 postgresql:
   enabled: false
 
-# Use your external Bitnami Postgres release named "si-postgres-postgresql"
 externalDatabase:
   host: si-postgres-postgresql
   port: 5432
@@ -19,16 +24,13 @@ externalDatabase:
   password: postgres
   database: postgres
 
-# Ephemeral data only (no PVC)
 persistence:
   enabled: false
 
-# Admin credentials (use your GitHub Secrets for real values)
 auth:
-  adminUser: admin
+  adminUser:  admin
   adminPassword: admin
 
-# Import your realm JSON at startup
 extraEnvVars:
   - name: KC_IMPORT
     value: "/tmp/realm.json"
@@ -37,7 +39,6 @@ extraEnvVars:
   - name: KC_METRICS_ENABLED
     value: "true"
 
-# Mount your realm ConfigMap into /tmp/realm.json
 extraVolumes:
   - name: realm-json
     configMap:
@@ -48,16 +49,15 @@ extraVolumeMounts:
     mountPath: /tmp/realm.json
     subPath: realm.json
 
-# Expose internally; we’ll create an OpenShift Route via template
 service:
   type: ClusterIP
   port: 8080
 
-# do NOT create an ingress here
 ingress:
   enabled: false
+
 route:
   enabled: true
-  host: ""           # auto-generate
+  host: ""
   tls:
     termination: edge
