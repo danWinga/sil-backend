@@ -3,10 +3,10 @@ name: si-keycloak
 description: A wrapper chart to deploy Keycloak with custom realm import
 type: application
 version: 0.1.0
-appVersion: "21.1.2"
+appVersion: "26.2.5"
 
 dependencies:
   - name: keycloak
     repository: https://charts.bitnami.com/bitnami
-    version: "24.7.3"    # your local `helm search repo bitnami/keycloak` shows this
+    version: "24.7.3"      # matches the bitnami/keycloak chart version
     condition: keycloak.enabled

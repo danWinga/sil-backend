@@ -1,19 +1,18 @@
-# helm/keycloak/values.yaml
-
-# allow quay.io/keycloak/keycloak:21.1.2
+# Allow quay.io/keycloak/keycloak (non-standard) images
 global:
   security:
     allowInsecureImages: true
 
 keycloak:
   enabled: true
+
+  # Use your Quay image:
   image:
     registry: quay.io
     repository: keycloak/keycloak
     tag: "21.1.2"
     pullPolicy: IfNotPresent
 
-# disable embedded Postgres
 postgresql:
   enabled: false
 
@@ -53,11 +52,7 @@ service:
   type: ClusterIP
   port: 8080
 
-ingress:
-  enabled: false
-
 route:
   enabled: true
-  host: ""
   tls:
     termination: edge
