@@ -1,21 +1,17 @@
-# helm/keycloak/values.yaml
-
 keycloak:
   enabled: true
-
-  # Use the Bitnami image (this overrides nothing—you can omit this block
-  # and let the dependency default)
   image:
     registry: docker.io
     repository: bitnami/keycloak
     tag: "26.2.5-debian-12-r1"
     pullPolicy: IfNotPresent
-
-  # We disable the embedded Postgres; we’ll use our si-postgres helm release
   postgresql:
     enabled: false
-
-  # Import your realm via mounted ConfigMap
+  persistence:
+    enabled: false
+  auth:
+    adminUser:  admin
+    adminPassword: admin
   extraEnvVars:
     - name: KEYCLOAK_IMPORT
       value: "/tmp/realm.json"
@@ -23,21 +19,14 @@ keycloak:
       value: "true"
     - name: KC_METRICS_ENABLED
       value: "true"
-
   extraVolumes:
     - name: realm-json
       configMap:
         name: keycloak-realm
-
   extraVolumeMounts:
     - name: realm-json
       mountPath: /tmp/realm.json
       subPath: realm.json
-
-  # no PVC
-  persistence:
-    enabled: false
-
   service:
     type: ClusterIP
     port: 8080
