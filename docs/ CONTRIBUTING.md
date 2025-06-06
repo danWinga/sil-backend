@@ -77,8 +77,3 @@ For production, replace Django dev server with Gunicorn/Uvicorn behind a LoadBal
 Add resource limits, HPA, readiness/liveness probes as needed.
 
 You can paste the above plain text into a Word document, adjust formatting (headers, bullet styles), and save as `deployment-guide.docx`. Then commit both:
-
-```bash
-git add README.md deployment-guide.docx
-git commit -m "docs: add README and Word deployment guide"
-git push
