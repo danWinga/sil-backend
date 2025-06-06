@@ -123,8 +123,8 @@ jobs:
     #         --set keycloak.auth.adminUser=${{ secrets.KC_ADMIN_USER }} \
     #         --set keycloak.auth.adminPassword=${{ secrets.KC_ADMIN_PASSWORD }}
 
-      - name: Wait for Keycloak StatefulSet rollout
-        run: oc rollout status statefulset/si-keycloak -n "${NAMESPACE}" --timeout=5m
+    #   - name: Wait for Keycloak StatefulSet rollout
+    #     run: oc rollout status statefulset/si-keycloak -n "${NAMESPACE}" --timeout=5m
 
       # 7) Run Django migrations
       - name: Cleanup old migrate Job

@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: si-keycloak
+  namespace: danwinga-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: si-keycloak
+  template:
+    metadata:
+      labels:
+        app: si-keycloak
+    spec:
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:21.1.2
+          env:
+            - name: KEYCLOAK_ADMIN
+              value: admin
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              value: admin
+            - name: KC_IMPORT
+              value: /tmp/realm.json
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            - name: KC_METRICS_ENABLED
+              value: "true"
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: realm-json
+              mountPath: /tmp/realm.json
+              subPath: realm.json
+      volumes:
+        - name: realm-json
+          configMap:
+            name: keycloak-realm
+            items:
+              - key: realm.json
+                path: realm.json
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: si-keycloak
+  namespace: danwinga-dev
+spec:
+  selector:
+    app: si-keycloak
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: si-keycloak
+  namespace: danwinga-dev
+spec:
+  to:
+    kind: Service
+    name: si-keycloak
+  port:
+    targetPort: 80
+  tls:
+    termination: edge
