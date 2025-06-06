@@ -8,5 +8,5 @@ appVersion: "26.2.5"
 dependencies:
   - name: keycloak
     repository: https://charts.bitnami.com/bitnami
-    version: "24.7.3"      # matches the bitnami/keycloak chart version
+    version: "24.7.3"
     condition: keycloak.enabled
