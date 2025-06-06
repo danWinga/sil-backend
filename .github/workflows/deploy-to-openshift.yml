@@ -17,7 +17,7 @@ jobs:
       PROJECT:      danwinga-dev
       NAMESPACE:    danwinga-dev
       SECRET_NAME:  si-backend-secret
-      CHART_KEYC:   helm/keycloak
+      CHART_KEYC:   helm/si-keycloak
       CHART_API:    helm/si-backend-api
       CHART_WORKER: helm/si-notifications-worker
       IMAGE_REPO:   ghcr.io/${{ github.repository_owner }}/si-backend

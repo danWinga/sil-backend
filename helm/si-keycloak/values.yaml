@@ -1,21 +1,26 @@
-# Allow quay.io/keycloak/keycloak (non-standard) images
+# helm/si-keycloak/values.yaml
+
+# Allow non-standard images (quay.io/keycloak/keycloak)
 global:
   security:
     allowInsecureImages: true
 
+# Enable the keycloak subchart
 keycloak:
   enabled: true
 
-  # Use your Quay image:
+  # Quay.io image settings
   image:
     registry: quay.io
     repository: keycloak/keycloak
     tag: "21.1.2"
     pullPolicy: IfNotPresent
 
+# Disable the bundled PostgreSQL in the subchart
 postgresql:
   enabled: false
 
+# Point at your external Bitnami Postgres release
 externalDatabase:
   host: si-postgres-postgresql
   port: 5432
@@ -23,13 +28,16 @@ externalDatabase:
   password: postgres
   database: postgres
 
+# No persistent volume for Keycloak data
 persistence:
   enabled: false
 
+# Keycloak admin credentials
 auth:
-  adminUser:  admin
+  adminUser: admin
   adminPassword: admin
 
+# Import your realm JSON on startup, and enable health/metrics
 extraEnvVars:
   - name: KC_IMPORT
     value: "/tmp/realm.json"
@@ -38,6 +46,7 @@ extraEnvVars:
   - name: KC_METRICS_ENABLED
     value: "true"
 
+# Mount the realm-export.json ConfigMap
 extraVolumes:
   - name: realm-json
     configMap:
@@ -48,11 +57,18 @@ extraVolumeMounts:
     mountPath: /tmp/realm.json
     subPath: realm.json
 
+# Internal service settings
 service:
   type: ClusterIP
   port: 8080
 
+# No Ingress — we’ll rely on OpenShift Route
+ingress:
+  enabled: false
+
+# Create an OpenShift Route for keycloak
 route:
   enabled: true
+  host: ""           # empty → auto-generated <name>-<namespace>.<cluster>
   tls:
     termination: edge
