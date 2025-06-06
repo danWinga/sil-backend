@@ -1,4 +1,8 @@
 # helm/keycloak/values.yaml
+# Allow non‐Bitnami images (we’re using quay.io/keycloak/keycloak)
+global:
+  security:
+    allowInsecureImages: true
 
 image:
   registry: quay.io

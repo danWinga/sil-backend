@@ -1,5 +1,3 @@
-# .github/workflows/deploy-to-openshift.yml
-
 name: CD → OpenShift via Helm
 
 on:
@@ -67,9 +65,9 @@ jobs:
             EMAIL_HOST_USER:       "${{ secrets.EMAIL_HOST_USER }}"
             EMAIL_HOST_PASSWORD:   "${{ secrets.EMAIL_HOST_PASSWORD }}"
             ADMIN_EMAIL:           "${{ secrets.ADMIN_EMAIL }}"
-            OIDC_OP_ISSUER:        "https://si-keycloak-${NAMESPACE}.apps.${{ secrets.OPENSHIFT_APPS_DOMAIN }}/realms/si"
-            OIDC_RP_CLIENT_ID:     "si-backend"
-            OIDC_RP_CLIENT_SECRET: "supersecret"
+            OIDC_OP_ISSUER:        "${{ secrets.OIDC_OP_ISSUER }}"
+            OIDC_RP_CLIENT_ID:     "${{ secrets.OIDC_RP_CLIENT_ID }}"
+            OIDC_RP_CLIENT_SECRET: "${{ secrets.OIDC_RP_CLIENT_SECRET }}"
           EOF
 
       - name: Create/Update keycloak-realm ConfigMap
@@ -118,7 +116,8 @@ jobs:
           oc rollout status statefulset/si-keycloak -n "${NAMESPACE}" --timeout=2m
 
       - name: Cleanup old migrate Job
-        run: oc delete job migrate-${{ github.run_id }} -n "${NAMESPACE}" --ignore-not-found
+        run: |
+          oc delete job migrate-${{ github.run_id }} -n "${NAMESPACE}" --ignore-not-found
 
       - name: Run Django migrations via Job
         run: |
