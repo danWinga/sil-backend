@@ -1,57 +1,46 @@
-# Allow quay.io/keycloak/keycloak
-global:
-  security:
-    allowInsecureImages: true
+# helm/keycloak/values.yaml
 
-image:
-  registry: quay.io
-  repository: keycloak/keycloak
-  tag: "21.1.2"
-  pullPolicy: IfNotPresent
+keycloak:
+  enabled: true
 
-# Disable the internal Postgres
-postgresql:
-  enabled: false
+  # Use the Bitnami image (this overrides nothing—you can omit this block
+  # and let the dependency default)
+  image:
+    registry: docker.io
+    repository: bitnami/keycloak
+    tag: "26.2.5-debian-12-r1"
+    pullPolicy: IfNotPresent
 
-# Point to external Bitnami Postgres release 'si-postgres'
-externalDatabase:
-  host: si-postgres-postgresql
-  port: 5432
-  user: postgres
-  database: postgres
-  # The Bitnami Postgres chart creates 'si-postgres-postgresql' Secret with key 'postgresql-password'
-  password:
-    secret: si-postgres-postgresql
-    key: postgresql-password
+  # We disable the embedded Postgres; we’ll use our si-postgres helm release
+  postgresql:
+    enabled: false
 
-# No persistent volume needed for demo
-persistence:
-  enabled: false
+  # Import your realm via mounted ConfigMap
+  extraEnvVars:
+    - name: KEYCLOAK_IMPORT
+      value: "/tmp/realm.json"
+    - name: KC_HEALTH_ENABLED
+      value: "true"
+    - name: KC_METRICS_ENABLED
+      value: "true"
 
-# Import your realm JSON
-extraEnvVars:
-  - name: KC_IMPORT
-    value: "/tmp/realm.json"
-  - name: KC_HEALTH_ENABLED
-    value: "true"
-  - name: KC_METRICS_ENABLED
-    value: "true"
+  extraVolumes:
+    - name: realm-json
+      configMap:
+        name: keycloak-realm
 
-# Mount the realm JSON
-extraVolumes:
-  - name: realm-json
-    configMap:
-      name: keycloak-realm
+  extraVolumeMounts:
+    - name: realm-json
+      mountPath: /tmp/realm.json
+      subPath: realm.json
 
-extraVolumeMounts:
-  - name: realm-json
-    mountPath: /tmp/realm.json
-    subPath: realm.json
+  # no PVC
+  persistence:
+    enabled: false
 
-# Expose as ClusterIP; Route enabled below
-service:
-  type: ClusterIP
-  port: 8080
+  service:
+    type: ClusterIP
+    port: 8080
 
 route:
   enabled: true

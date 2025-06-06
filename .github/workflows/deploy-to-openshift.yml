@@ -1,3 +1,5 @@
+# .github/workflows/deploy-to-openshift.yml
+
 name: CD → OpenShift via Helm
 
 on:
@@ -14,19 +16,19 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      PROJECT:     danwinga-dev
-      NAMESPACE:   danwinga-dev
-      SECRET_NAME: si-backend-secret
-      CHART_KEYC:  helm/keycloak
-      CHART_API:   helm/si-backend-api
-      CHART_WORKER: helm/si-notifications-worker
-      IMAGE_REPO:  ghcr.io/${{ github.repository_owner }}/si-backend
+      PROJECT:       danwinga-dev
+      NAMESPACE:     danwinga-dev
+      SECRET_NAME:   si-backend-secret
+      CHART_KEYC:    helm/keycloak
+      CHART_API:     helm/si-backend-api
+      CHART_WORKER:  helm/si-notifications-worker
+      IMAGE_REPO:    ghcr.io/${{ github.repository_owner }}/si-backend
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Determine IMAGE_TAG
+      - name: Determine IMAGE_TAG (commit SHA)
         run: echo "IMAGE_TAG=${GITHUB_SHA}" >> $GITHUB_ENV
 
       - name: Install oc CLI
@@ -42,7 +44,7 @@ jobs:
             --insecure-skip-tls-verify
           oc project "${PROJECT}"
 
-      # Create backend Secret (DB, OIDC, SMS, email)
+      # 1) Create/Update backend Secret (DB, OIDC, SMS, Email)
       - name: Create/Update si-backend-secret
         run: |
           oc apply -f - <<EOF
@@ -67,12 +69,12 @@ jobs:
             EMAIL_HOST_USER:       "${{ secrets.EMAIL_HOST_USER }}"
             EMAIL_HOST_PASSWORD:   "${{ secrets.EMAIL_HOST_PASSWORD }}"
             ADMIN_EMAIL:           "${{ secrets.ADMIN_EMAIL }}"
-            OIDC_OP_ISSUER:        "${{ secrets.OIDC_OP_ISSUER }}"
-            OIDC_RP_CLIENT_ID:     "${{ secrets.OIDC_RP_CLIENT_ID }}"
-            OIDC_RP_CLIENT_SECRET: "${{ secrets.OIDC_RP_CLIENT_SECRET }}"
+            OIDC_OP_ISSUER:        "https://si-keycloak-${NAMESPACE}.apps.${{ secrets.OPENSHIFT_APPS_DOMAIN }}/realms/si"
+            OIDC_RP_CLIENT_ID:     "si-backend"
+            OIDC_RP_CLIENT_SECRET: "supersecret"
           EOF
 
-      # Create realm ConfigMap
+      # 2) Create/Update Keycloak realm ConfigMap
       - name: Create/Update keycloak-realm ConfigMap
         run: |
           oc create configmap keycloak-realm \
@@ -81,7 +83,7 @@ jobs:
             --dry-run=client -o yaml \
           | oc apply -f -
 
-      # Helm bootstrap
+      # 3) Helm setup
       - name: Set up Helm
         uses: azure/setup-helm@v3
         with:
@@ -92,7 +94,7 @@ jobs:
           helm repo add bitnami https://charts.bitnami.com/bitnami
           helm repo update
 
-      # Infra: Postgres & RabbitMQ
+      # 4) Deploy/Upgrade Postgres
       - name: Deploy/Upgrade Postgres
         run: |
           helm upgrade --install si-postgres bitnami/postgresql \
@@ -101,6 +103,7 @@ jobs:
             --set global.postgresql.auth.username=postgres \
             --set global.postgresql.auth.database=postgres
 
+      # 5) Deploy/Upgrade RabbitMQ
       - name: Deploy/Upgrade RabbitMQ
         run: |
           helm upgrade --install si-rabbitmq bitnami/rabbitmq \
@@ -108,20 +111,22 @@ jobs:
             --set auth.username=guest \
             --set auth.password=guest
 
-      # Keycloak via values.yaml
-      - name: Deploy/Upgrade Keycloak via values.yaml
+      # 6) Deploy/Upgrade Keycloak via wrapper chart
+      - name: Update Keycloak chart dependencies
+        run: helm dependency update "${CHART_KEYC}"
+
+      - name: Deploy/Upgrade Keycloak via wrapper chart
         run: |
-          helm upgrade --install si-keycloak bitnami/keycloak \
-            --namespace "${NAMESPACE}" \
+            helm upgrade --install si-keycloak helm/keycloak \
+            --namespace $NAMESPACE \
             -f helm/keycloak/values.yaml \
-            --set auth.adminUser="${{ secrets.KC_ADMIN_USER }}" \
-            --set auth.adminPassword="${{ secrets.KC_ADMIN_PASSWORD }}"
+            --set keycloak.auth.adminUser=${{ secrets.KC_ADMIN_USER }} \
+            --set keycloak.auth.adminPassword=${{ secrets.KC_ADMIN_PASSWORD }}
 
       - name: Wait for Keycloak StatefulSet rollout
-        run: |
-          oc rollout status statefulset/si-keycloak -n "${NAMESPACE}" --timeout=5m
+        run: oc rollout status statefulset/si-keycloak -n "${NAMESPACE}" --timeout=5m
 
-      # Migrations
+      # 7) Run Django migrations
       - name: Cleanup old migrate Job
         run: oc delete job migrate-${{ github.run_id }} -n "${NAMESPACE}" --ignore-not-found
 
@@ -147,7 +152,7 @@ jobs:
           EOF
           oc wait job migrate-${{ github.run_id }} -n "${NAMESPACE}" --for=condition=complete --timeout=120s
 
-      # Deploy API & Worker
+      # 8) Deploy/Upgrade API chart
       - name: Deploy/Upgrade API chart
         run: |
           helm upgrade --install si-api "${CHART_API}" \
@@ -156,6 +161,7 @@ jobs:
             --set image.tag="${IMAGE_TAG}" \
             --set secretName="${SECRET_NAME}"
 
+      # 9) Deploy/Upgrade Worker chart
       - name: Deploy/Upgrade Worker chart
         run: |
           helm upgrade --install si-worker "${CHART_WORKER}" \
@@ -164,6 +170,7 @@ jobs:
             --set image.tag="${IMAGE_TAG}" \
             --set secretName="${SECRET_NAME}"
 
+      # 10) Wait for API & Worker rollouts
       - name: Wait for API & Worker rollouts
         run: |
           oc rollout status deployment/si-api    -n "${NAMESPACE}" --timeout=2m
