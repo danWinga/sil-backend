@@ -14,13 +14,13 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      PROJECT:      danwinga-dev
-      NAMESPACE:    danwinga-dev
-      SECRET_NAME:  si-backend-secret
-      CHART_KEYC:   helm/si-keycloak
-      CHART_API:    helm/si-backend-api
-      CHART_WORKER: helm/si-notifications-worker
-      IMAGE_REPO:   ghcr.io/${{ github.repository_owner }}/si-backend
+      PROJECT:       danwinga-dev
+      NAMESPACE:     danwinga-dev
+      SECRET_NAME:   si-backend-secret
+      CHART_KEYC:    helm/si-keycloak
+      CHART_API:     helm/si-backend-api
+      CHART_WORKER:  helm/si-notifications-worker
+      IMAGE_REPO:    ghcr.io/${{ github.repository_owner }}/si-backend
 
     steps:
       - name: Checkout code
@@ -111,7 +111,7 @@ jobs:
         run: |
           helm upgrade --install si-keycloak "${CHART_KEYC}" \
             --namespace "${NAMESPACE}" \
-            -f helm/keycloak/values.yaml
+            -f "${CHART_KEYC}/values.yaml"
 
       - name: Wait for Keycloak StatefulSet rollout
         run: |
