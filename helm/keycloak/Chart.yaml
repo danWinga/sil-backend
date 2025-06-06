@@ -7,6 +7,6 @@ appVersion: "21.1.2"
 
 dependencies:
   - name: keycloak
-    version: "26.2.5"
+    version: "24.7.3"                   # <-- this is the Helm Chart version
     repository: "https://charts.bitnami.com/bitnami"
     condition: keycloak.enabled
