@@ -107,6 +107,8 @@ jobs:
 
       - name: Deploy/Upgrade Keycloak via values.yaml
         run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo update
           helm upgrade --install si-keycloak bitnami/keycloak \
             --namespace "${NAMESPACE}" \
             -f helm/keycloak/values.yaml \
@@ -115,7 +117,7 @@ jobs:
 
       - name: Wait for Keycloak StatefulSet rollout
         run: |
-          oc rollout status statefulset/si-keycloak -n "${NAMESPACE}" --timeout=2m
+          oc rollout status statefulset/si-keycloak -n "${NAMESPACE}" --timeout=5m
 
       - name: Cleanup old migrate Job
         run: |
