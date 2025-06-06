@@ -1,12 +1,11 @@
 apiVersion: v2
 name: si-keycloak
-description: Wrapper chart for Bitnami Keycloak with realm import
 type: application
 version: 0.1.0
 appVersion: "21.1.2"
 
 dependencies:
   - name: keycloak
-    version: "24.7.3"                   # <-- this is the Helm Chart version
+    version: "24.7.3"                # match the Bitnami chart version you want
     repository: "https://charts.bitnami.com/bitnami"
     condition: keycloak.enabled
