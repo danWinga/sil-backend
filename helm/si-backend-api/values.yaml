@@ -5,9 +5,13 @@ image:
 secretName: si-backend-secret
 
 replicaCount: 1
+
+# Expose containerPort 8000 → service port 8000
 service:
-  port: 80
+  port: 8000
   targetPort: 8000
+
+# Enable Route on that same port
 route:
   enabled: true
-  host: ""     # leave empty to let OpenShift choose <name>-<namespace>.<cluster>
+  host: ""   # leave blank to let OCP auto-generate <name>-<ns>.<cluster>

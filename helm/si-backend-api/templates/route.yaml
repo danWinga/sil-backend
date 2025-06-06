@@ -8,7 +8,8 @@ spec:
     kind: Service
     name: {{ .Release.Name }}
   port:
-    targetPort: {{ .Values.service.port }}
+    # must match the Service port name or number
+    targetPort: http
   tls:
     termination: edge
 {{- end }}
