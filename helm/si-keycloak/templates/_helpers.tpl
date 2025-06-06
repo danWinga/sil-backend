@@ -1,5 +1,5 @@
 {{/*
-Define si-keycloak.fullname by delegating to the Bitnami subchart helper.
+Return the full name of this Keycloak release (delegates to subchart helper).
 */}}
 {{- define "si-keycloak.fullname" -}}
 {{- include "keycloak.fullname" . -}}

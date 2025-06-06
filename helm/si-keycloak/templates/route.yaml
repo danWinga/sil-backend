@@ -3,14 +3,13 @@ apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: {{ include "si-keycloak.fullname" . }}
-  labels:
-    app: {{ include "si-keycloak.fullname" . }}
 spec:
   to:
     kind: Service
-    name: {{ include "si-keycloak.fullname" . }}-http
+    name: {{ include "keycloak.fullname" . }}
   port:
+    # bitnami keycloak service port name is "http"
     targetPort: http
   tls:
-    termination: {{ .Values.route.tls.termination }}
+    termination: {{ .Values.route.tls.termination | default "edge" }}
 {{- end }}
