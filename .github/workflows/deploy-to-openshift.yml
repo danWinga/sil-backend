@@ -42,6 +42,7 @@ jobs:
             --insecure-skip-tls-verify
           oc project "${PROJECT}"
 
+      # 1) Backend secret w/ OIDC + DB + SMS/Email creds
       - name: Create/Update si-backend-secret
         run: |
           oc apply -f - <<EOF
@@ -66,11 +67,12 @@ jobs:
             EMAIL_HOST_USER:       "${{ secrets.EMAIL_HOST_USER }}"
             EMAIL_HOST_PASSWORD:   "${{ secrets.EMAIL_HOST_PASSWORD }}"
             ADMIN_EMAIL:           "${{ secrets.ADMIN_EMAIL }}"
-            OIDC_OP_ISSUER:        "${{ secrets.OIDC_OP_ISSUER }}"
-            OIDC_RP_CLIENT_ID:     "${{ secrets.OIDC_RP_CLIENT_ID }}"
-            OIDC_RP_CLIENT_SECRET: "${{ secrets.OIDC_RP_CLIENT_SECRET }}"
+            OIDC_OP_ISSUER:        "https://si-keycloak-${NAMESPACE}.apps.${{ secrets.OPENSHIFT_APPS_DOMAIN }}/realms/si"
+            OIDC_RP_CLIENT_ID:     "si-backend"
+            OIDC_RP_CLIENT_SECRET: "supersecret"
           EOF
 
+      # 2) Keycloak realm JSON
       - name: Create/Update keycloak-realm ConfigMap
         run: |
           oc create configmap keycloak-realm \
@@ -79,6 +81,7 @@ jobs:
             --dry-run=client -o yaml \
           | oc apply -f -
 
+      # 3) Helm bootstrap
       - name: Set up Helm
         uses: azure/setup-helm@v3
         with:
@@ -89,6 +92,7 @@ jobs:
           helm repo add bitnami https://charts.bitnami.com/bitnami
           helm repo update
 
+      # 4) Infra: Postgres & RabbitMQ
       - name: Deploy/Upgrade Postgres
         run: |
           helm upgrade --install si-postgres bitnami/postgresql \
@@ -104,6 +108,7 @@ jobs:
             --set auth.username=guest \
             --set auth.password=guest
 
+      # 5) Keycloak via your wrapper chart
       - name: Update Keycloak chart dependencies
         run: helm dependency update "${CHART_KEYC}"
 
@@ -114,9 +119,9 @@ jobs:
             -f "${CHART_KEYC}/values.yaml"
 
       - name: Wait for Keycloak StatefulSet rollout
-        run: |
-          oc rollout status statefulset/si-keycloak -n "${NAMESPACE}" --timeout=2m
+        run: oc rollout status statefulset/si-keycloak -n "${NAMESPACE}" --timeout=2m
 
+      # 6) Run Django migrations
       - name: Cleanup old migrate Job
         run: oc delete job migrate-${{ github.run_id }} -n "${NAMESPACE}" --ignore-not-found
 
@@ -143,6 +148,7 @@ jobs:
           EOF
           oc wait job migrate-${{ github.run_id }} -n "${NAMESPACE}" --for=condition=complete --timeout=120s
 
+      # 7) Deploy/Upgrade your app
       - name: Deploy/Upgrade API chart
         run: |
           helm upgrade --install si-api "${CHART_API}" \
