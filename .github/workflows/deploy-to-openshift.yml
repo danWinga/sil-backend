@@ -14,13 +14,13 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      PROJECT:       danwinga-dev
-      NAMESPACE:     danwinga-dev
-      SECRET_NAME:   si-backend-secret
-      CHART_KEYC:    helm/si-keycloak
-      CHART_API:     helm/si-backend-api
-      CHART_WORKER:  helm/si-notifications-worker
-      IMAGE_REPO:    ghcr.io/${{ github.repository_owner }}/si-backend
+      PROJECT:      danwinga-dev
+      NAMESPACE:    danwinga-dev
+      SECRET_NAME:  si-backend-secret
+      CHART_KEYC:   helm/keycloak       # not used by Bitnami, but kept for consistency
+      CHART_API:    helm/si-backend-api
+      CHART_WORKER: helm/si-notifications-worker
+      IMAGE_REPO:   ghcr.io/${{ github.repository_owner }}/si-backend
 
     steps:
       - name: Checkout code
@@ -42,7 +42,7 @@ jobs:
             --insecure-skip-tls-verify
           oc project "${PROJECT}"
 
-      # 1) Backend secret w/ OIDC + DB + SMS/Email creds
+      # 1) Backend secret w/ OIDC & infra creds
       - name: Create/Update si-backend-secret
         run: |
           oc apply -f - <<EOF
@@ -72,7 +72,7 @@ jobs:
             OIDC_RP_CLIENT_SECRET: "supersecret"
           EOF
 
-      # 2) Keycloak realm JSON
+      # 2) Import realm JSON
       - name: Create/Update keycloak-realm ConfigMap
         run: |
           oc create configmap keycloak-realm \
@@ -92,7 +92,7 @@ jobs:
           helm repo add bitnami https://charts.bitnami.com/bitnami
           helm repo update
 
-      # 4) Infra: Postgres & RabbitMQ
+      # 4) Postgres & RabbitMQ
       - name: Deploy/Upgrade Postgres
         run: |
           helm upgrade --install si-postgres bitnami/postgresql \
@@ -108,20 +108,18 @@ jobs:
             --set auth.username=guest \
             --set auth.password=guest
 
-      # 5) Keycloak via your wrapper chart
-      - name: Update Keycloak chart dependencies
-        run: helm dependency update "${CHART_KEYC}"
-
-      - name: Deploy/Upgrade Keycloak via wrapper chart
+      # 5) Keycloak (Bitnami chart) with your overrides
+      - name: Deploy/Upgrade Keycloak
         run: |
-          helm upgrade --install si-keycloak "${CHART_KEYC}" \
+          helm upgrade --install si-keycloak bitnami/keycloak \
             --namespace "${NAMESPACE}" \
-            -f "${CHART_KEYC}/values.yaml"
+            -f helm/keycloak/values.yaml
 
-      - name: Wait for Keycloak StatefulSet rollout
-        run: oc rollout status statefulset/si-keycloak -n "${NAMESPACE}" --timeout=2m
+      - name: Wait for Keycloak rollout
+        run: |
+          oc rollout status statefulset/si-keycloak -n "${NAMESPACE}" --timeout=2m
 
-      # 6) Run Django migrations
+      # 6) Apply Django migrations
       - name: Cleanup old migrate Job
         run: oc delete job migrate-${{ github.run_id }} -n "${NAMESPACE}" --ignore-not-found
 
@@ -148,7 +146,7 @@ jobs:
           EOF
           oc wait job migrate-${{ github.run_id }} -n "${NAMESPACE}" --for=condition=complete --timeout=120s
 
-      # 7) Deploy/Upgrade your app
+      # 7) Your API & Worker
       - name: Deploy/Upgrade API chart
         run: |
           helm upgrade --install si-api "${CHART_API}" \
