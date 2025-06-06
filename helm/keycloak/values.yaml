@@ -15,7 +15,7 @@ postgresql:
 persistence:
   enabled: false
 
-# Admin console creds (will come from Secret in CD)
+# Admin console creds (will come from Secret in CD )
 auth:
   adminUser:  admin
   adminPassword: admin
