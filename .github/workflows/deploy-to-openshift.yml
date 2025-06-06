@@ -1,3 +1,5 @@
+# .github/workflows/deploy-to-openshift.yml
+
 name: CD → OpenShift via Helm
 
 on:
@@ -14,12 +16,12 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      PROJECT:      danwinga-dev
-      NAMESPACE:    danwinga-dev
-      SECRET_NAME:  si-backend-secret
-      CHART_API:    helm/si-backend-api
-      CHART_WORKER: helm/si-notifications-worker
-      IMAGE_REPO:   ghcr.io/${{ github.repository_owner }}/si-backend
+      PROJECT:       danwinga-dev
+      NAMESPACE:     danwinga-dev
+      SECRET_NAME:   si-backend-secret
+      CHART_API:     helm/si-backend-api
+      CHART_WORKER:  helm/si-notifications-worker
+      IMAGE_REPO:    ghcr.io/${{ github.repository_owner }}/si-backend
 
     steps:
       - name: Checkout code
@@ -103,7 +105,7 @@ jobs:
             --set auth.username=guest \
             --set auth.password=guest
 
-      - name: Deploy/Upgrade Keycloak (Bitnami chart)
+      - name: Deploy/Upgrade Keycloak via values.yaml
         run: |
           helm upgrade --install si-keycloak bitnami/keycloak \
             --namespace "${NAMESPACE}" \
@@ -111,7 +113,7 @@ jobs:
             --set auth.adminUser="${{ secrets.KC_ADMIN_USER }}" \
             --set auth.adminPassword="${{ secrets.KC_ADMIN_PASSWORD }}"
 
-      - name: Wait for Keycloak rollout
+      - name: Wait for Keycloak StatefulSet rollout
         run: |
           oc rollout status statefulset/si-keycloak -n "${NAMESPACE}" --timeout=2m
 

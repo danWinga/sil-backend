@@ -1,15 +1,16 @@
-# helm/keycloak/values.yaml
-# Allow non‐Bitnami images (we’re using quay.io/keycloak/keycloak)
+# Allow non‐Bitnami (Quay) images
 global:
   security:
     allowInsecureImages: true
 
+# Which Keycloak image to use
 image:
   registry: quay.io
   repository: keycloak/keycloak
   tag: "21.1.2"
   pullPolicy: IfNotPresent
 
+# Use external Postgres
 externalDatabase:
   host: si-postgres-postgresql
   port: 5432
@@ -17,9 +18,11 @@ externalDatabase:
   database: postgres
   existingSecret: si-postgres-postgresql
 
+# No persistence for demo
 persistence:
   enabled: false
 
+# Import your realm JSON
 extraEnvVars:
   - name: KC_IMPORT
     value: "/tmp/realm.json"
@@ -28,6 +31,7 @@ extraEnvVars:
   - name: KC_METRICS_ENABLED
     value: "true"
 
+# Mount the ConfigMap with your realm-export.json
 extraVolumes:
   - name: realm-json
     configMap:
@@ -38,6 +42,7 @@ extraVolumeMounts:
     mountPath: /tmp/realm.json
     subPath: realm.json
 
+# Service only, Route is created via chart
 service:
   type: ClusterIP
   port: 8080
