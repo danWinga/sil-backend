@@ -23,6 +23,13 @@ RUN poetry config virtualenvs.create false \
 # 4) Copy your entire codebase
 COPY . /app/
 
+COPY . .
+
+# Collect static into ./staticfiles
+RUN python manage.py collectstatic --noinpu
+
+EXPOSE 8000
+
 # 5) Default command for web (overridden in compose)
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 # Default: run migrations then Django server
