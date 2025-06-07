@@ -1,0 +1,17 @@
+# openshift/si-keycloak-route.yaml
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: si-keycloak
+  namespace: danwinga-dev
+spec:
+  host: si-keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com
+  path: "/"                           # <-- catch everything
+  to:
+    kind: Service
+    name: si-keycloak
+  port:
+    targetPort: http                 # our Service port name (8080/TCP)
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

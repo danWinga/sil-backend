@@ -42,6 +42,11 @@ jobs:
             --insecure-skip-tls-verify
           oc project ${PROJECT}
 
+      - name: Wait for Postgres to be ready
+        run: |
+          oc rollout status statefulset/si-postgres-postgresql \
+            -n ${NAMESPACE} --timeout=2m
+
       - name: Create/Update core Kubernetes Secret
         run: |
           oc apply -f - <<EOF
@@ -55,12 +60,10 @@ jobs:
             SECRET_KEY:            "${{ secrets.SECRET_KEY }}"
             DEBUG:                 "False"
             ALLOWED_HOSTS:         "*"
-            # Postgres & RabbitMQ
             DATABASE_URL:          "postgres://postgres:postgres@si-postgres-postgresql:5432/postgres"
             RABBITMQ_URL:          "amqp://guest:guest@si-rabbitmq:5672/"
             BROKER_URL:            "amqp://guest:guest@si-rabbitmq:5672/"
             CELERY_BROKER_URL:     "amqp://guest:guest@si-rabbitmq:5672/"
-            # SMS & Email creds
             AFRICAS_TALKING_USERNAME: "${{ secrets.AFRICAS_TALKING_USERNAME }}"
             AFRICAS_TALKING_API_KEY:  "${{ secrets.AFRICAS_TALKING_API_KEY }}"
             EMAIL_HOST:            "${{ secrets.EMAIL_HOST }}"
@@ -70,7 +73,7 @@ jobs:
             ADMIN_EMAIL:           "${{ secrets.ADMIN_EMAIL }}"
           EOF
 
-      - name: Cleanup old migrate job
+      - name: Cleanup old migrate Job
         run: |
           oc delete job migrate-${{ github.run_id }} -n ${NAMESPACE} --ignore-not-found
 
@@ -95,9 +98,10 @@ jobs:
                     command: ["python","manage.py","migrate","--noinput"]
                 restartPolicy: OnFailure
           EOF
+          # Wait for the Job to complete (but do not delete it yet)
           oc wait job migrate-${{ github.run_id }} -n ${NAMESPACE} --for=condition=complete --timeout=120s
 
-      - name: Patch Secret with OIDC / Keycloak settings
+      - name: Patch Secret with Keycloak OIDC settings
         run: |
           oc patch secret/${SECRET_NAME} -n ${NAMESPACE} --type=merge -p='
           {

@@ -1,0 +1,119 @@
+# -------------------------------------------------------------------
+# 1) realm ConfigMap
+# -------------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realm
+  namespace: danwinga-dev
+data:
+  realm.json: |
+    { 
+      "realm": "si",
+      "enabled": true,
+      ...
+    }
+
+---
+# -------------------------------------------------------------------
+# 2) Deployment
+# -------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: si-keycloak
+  namespace: danwinga-dev
+  labels:
+    app: si-keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: si-keycloak
+  template:
+    metadata:
+      labels:
+        app: si-keycloak
+    spec:
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:21.1.2
+          args:
+            - start-dev
+            - --import-realm
+          env:
+            # bind inside-container HTTP server to all interfaces
+            - name: KC_HTTP_HOST
+              value: "0.0.0.0"
+            - name: KC_HTTP_PORT
+              value: "8080"
+
+            - name: KEYCLOAK_ADMIN
+              value: "admin"
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              value: "admin"
+            - name: KEYCLOAK_HEALTH_ENABLED
+              value: "true"
+            - name: KEYCLOAK_METRICS_ENABLED
+              value: "true"
+
+            # external URL & proxy config
+            - name: KEYCLOAK_HOSTNAME
+              value: "si-keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com"
+            - name: KEYCLOAK_PROXY
+              value: "edge"
+            - name: KEYCLOAK_HOSTNAME_STRICT
+              value: "false"
+            - name: KEYCLOAK_HOSTNAME_STRICT_HTTPS
+              value: "true"
+            - name: KEYCLOAK_FRONTEND_URL
+              value: "https://si-keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com/auth"
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: realm-volume
+              mountPath: /opt/keycloak/data/import/realm.json
+              subPath: realm.json
+      volumes:
+        - name: realm-volume
+          configMap:
+            name: keycloak-realm
+
+---
+# -------------------------------------------------------------------
+# 3) Service on 8080
+# -------------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: si-keycloak
+  namespace: danwinga-dev
+  labels:
+    app: si-keycloak
+spec:
+  selector:
+    app: si-keycloak
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+
+---
+# -------------------------------------------------------------------
+# 4) TLS-terminated Route
+# -------------------------------------------------------------------
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: si-keycloak
+  namespace: danwinga-dev
+spec:
+  host: si-keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com
+  to:
+    kind: Service
+    name: si-keycloak
+  port:
+    targetPort: http
+  tls:
+    termination: edge
