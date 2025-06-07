@@ -21,9 +21,6 @@ jobs:
       CHART_API: helm/si-backend-api
       CHART_WORKER: helm/si-notifications-worker
       IMAGE_REPO: ghcr.io/danwinga/si-backend
-      # if you want to parameterize your Keycloak route:
-      # KEYCLOAK_ROUTE: keycloak-danwinga-dev.apps.<cluster-domain>
-      # otherwise just hardcode below
 
     steps:
       - name: Checkout code
@@ -45,7 +42,8 @@ jobs:
             --insecure-skip-tls-verify
           oc project ${PROJECT}
 
-      - name: Create/Update Kubernetes Secret
+      - name: Create/Update core Kubernetes Secret
+        # note: we are *not* injecting OIDC here, so the migrate Job can run uninhibited
         run: |
           oc apply -f - <<EOF
           apiVersion: v1
@@ -55,20 +53,13 @@ jobs:
             namespace: ${NAMESPACE}
           type: Opaque
           stringData:
-            # Django & core
             SECRET_KEY:            "${{ secrets.SECRET_KEY }}"
             DEBUG:                 "False"
             ALLOWED_HOSTS:         "*"
-            # Database & Broker
             DATABASE_URL:          "postgres://postgres:postgres@si-postgres-postgresql:5432/postgres"
             RABBITMQ_URL:          "amqp://guest:guest@si-rabbitmq:5672/"
             BROKER_URL:            "amqp://guest:guest@si-rabbitmq:5672/"
             CELERY_BROKER_URL:     "amqp://guest:guest@si-rabbitmq:5672/"
-            # OIDC / Keycloak
-            OIDC_OP_ISSUER:        "https://keycloak-danwinga-dev.apps.<cluster-domain>/realms/si"
-            OIDC_RP_CLIENT_ID:     "backend-client"
-            OIDC_RP_CLIENT_SECRET: "${{ secrets.OIDC_RP_CLIENT_SECRET }}"
-            # SMS & Email
             AFRICAS_TALKING_USERNAME: "${{ secrets.AFRICAS_TALKING_USERNAME }}"
             AFRICAS_TALKING_API_KEY:  "${{ secrets.AFRICAS_TALKING_API_KEY }}"
             EMAIL_HOST:            "${{ secrets.EMAIL_HOST }}"
@@ -104,6 +95,18 @@ jobs:
                 restartPolicy: OnFailure
           EOF
           oc wait job migrate-${{ github.run_id }} -n ${NAMESPACE} --for=condition=complete --timeout=120s
+
+      - name: Patch Secret with OIDC settings
+        # now that migrations are done, inject the Keycloak OIDC vars
+        run: |
+          oc patch secret/${SECRET_NAME} -n ${NAMESPACE} --type=merge -p='
+          {
+            "stringData": {
+              "OIDC_OP_ISSUER":        "https://keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com/realms/si",
+              "OIDC_RP_CLIENT_ID":     "backend-client",
+              "OIDC_RP_CLIENT_SECRET": "'"${{ secrets.OIDC_RP_CLIENT_SECRET }}"'"
+            }
+          }'
 
       - name: Set up Helm
         uses: azure/setup-helm@v3
