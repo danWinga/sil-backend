@@ -9,7 +9,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env(
     DEBUG                = (bool, False),
     SECRET_KEY           = (str, ""),
-    ALLOWED_HOSTS        = (list, []),
+    ALLOWED_HOSTS        =(list, []),
+    CSRF_TRUSTED_ORIGINS =(list, []),
     DATABASE_URL         = (str, "sqlite:///db.sqlite3"),
 
     RABBITMQ_URL         = (str, ""),
@@ -40,7 +41,8 @@ environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 # Core
 SECRET_KEY    = env("SECRET_KEY")
 DEBUG         = env("DEBUG")
-ALLOWED_HOSTS = env("ALLOWED_HOSTS")
+#ALLOWED_HOSTS = env("ALLOWED_HOSTS")
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 
 # New: CSRF trusted origins
 # expects a comma-separated list
