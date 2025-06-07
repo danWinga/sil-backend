@@ -56,6 +56,8 @@ jobs:
             SECRET_KEY:              "${{ secrets.SECRET_KEY }}"
             DEBUG:                   "False"
             ALLOWED_HOSTS:           "*"
+            ALLOWED_HOSTS:         "si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com"
+            CSRF_TRUSTED_ORIGINS:  "https://si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com"
 
             # PostgreSQL (Bitnami chart)
             DATABASE_URL:            "postgres://postgres:postgres@si-postgres-postgresql:5432/postgres"

@@ -42,6 +42,11 @@ SECRET_KEY    = env("SECRET_KEY")
 DEBUG         = env("DEBUG")
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 
+# New: CSRF trusted origins
+# expects a comma-separated list
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
+
+
 INSTALLED_APPS = [
     # django…
     "django.contrib.admin",
