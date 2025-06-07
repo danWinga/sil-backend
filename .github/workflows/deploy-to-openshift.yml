@@ -1,6 +1,6 @@
 # .github/workflows/deploy-to-openshift.yml
 
-name: CD → OpenShift via Helm
+name: CD → OpenShift via Helm and Github
 
 on:
   push:
