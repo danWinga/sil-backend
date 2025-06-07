@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ .Release.Name }}
+  labels:
+    app: {{ .Release.Name }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -12,12 +14,37 @@ spec:
       labels:
         app: {{ .Release.Name }}
     spec:
-      containers:
-        - name: api
+      # 1) Run migrations before the API starts
+      initContainers:
+        - name: migrate
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: {{ .Values.service.targetPort }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           envFrom:
             - secretRef:
                 name: {{ .Values.secretName }}
+          command:
+            - sh
+            - -c
+            - |
+              echo "⏳ Running Django migrations..."
+              python manage.py migrate --noinput
+      # 2) Now start the API
+      containers:
+        - name: api
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.secretName }}
+          resources:
+            # optional defaults, override via values.yaml if desired
+            limits:
+              cpu: "1"
+              memory: "512Mi"
+            requests:
+              cpu: "10m"
+              memory: "64Mi"
+      restartPolicy: Always

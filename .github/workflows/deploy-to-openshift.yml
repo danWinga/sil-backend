@@ -2,8 +2,7 @@ name: CD → OpenShift via Helm
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -23,10 +22,9 @@ jobs:
       IMAGE_REPO: ghcr.io/danwinga/si-backend
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Determine IMAGE_TAG (commit SHA)
+      - name: Determine IMAGE_TAG
         run: echo "IMAGE_TAG=${GITHUB_SHA}" >> $GITHUB_ENV
 
       - name: Install oc CLI
@@ -42,12 +40,10 @@ jobs:
             --insecure-skip-tls-verify
           oc project ${PROJECT}
 
-      - name: Wait for Postgres to be ready
-        run: |
-          oc rollout status statefulset/si-postgres-postgresql \
-            -n ${NAMESPACE} --timeout=2m
+      - name: Wait for Postgres
+        run: oc rollout status statefulset/si-postgres-postgresql -n ${NAMESPACE} --timeout=2m
 
-      - name: Create/Update core Kubernetes Secret
+      - name: Create/Update core Secret
         run: |
           oc apply -f - <<EOF
           apiVersion: v1
@@ -73,35 +69,7 @@ jobs:
             ADMIN_EMAIL:           "${{ secrets.ADMIN_EMAIL }}"
           EOF
 
-      - name: Cleanup old migrate Job
-        run: |
-          oc delete job migrate-${{ github.run_id }} -n ${NAMESPACE} --ignore-not-found
-
-      - name: Run Django migrations via Job
-        run: |
-          cat <<EOF | oc apply -f -
-          apiVersion: batch/v1
-          kind: Job
-          metadata:
-            name: migrate-${{ github.run_id }}
-            namespace: ${NAMESPACE}
-          spec:
-            backoffLimit: 1
-            template:
-              spec:
-                containers:
-                  - name: migrate
-                    image: ${IMAGE_REPO}:${IMAGE_TAG}
-                    envFrom:
-                      - secretRef:
-                          name: ${SECRET_NAME}
-                    command: ["python","manage.py","migrate","--noinput"]
-                restartPolicy: OnFailure
-          EOF
-          # Wait for the Job to complete (but do not delete it yet)
-          oc wait job migrate-${{ github.run_id }} -n ${NAMESPACE} --for=condition=complete --timeout=120s
-
-      - name: Patch Secret with Keycloak OIDC settings
+      - name: Patch with Keycloak OIDC
         run: |
           oc patch secret/${SECRET_NAME} -n ${NAMESPACE} --type=merge -p='
           {
@@ -117,12 +85,12 @@ jobs:
         with:
           version: v3.12.0
 
-      - name: Add Bitnami repo & update
+      - name: Add Bitnami repo
         run: |
           helm repo add bitnami https://charts.bitnami.com/bitnami
           helm repo update
 
-      - name: Deploy/Upgrade API chart
+      - name: Deploy API
         run: |
           helm upgrade --install si-api ${CHART_API} \
             --namespace ${NAMESPACE} \
@@ -130,7 +98,7 @@ jobs:
             --set image.tag=${IMAGE_TAG} \
             --set secretName=${SECRET_NAME}
 
-      - name: Deploy/Upgrade Worker chart
+      - name: Deploy Worker
         run: |
           helm upgrade --install si-worker ${CHART_WORKER} \
             --namespace ${NAMESPACE} \

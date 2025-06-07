@@ -1,17 +1,23 @@
+# Default values for si-backend-api
+
+# Number of API replicas
+replicaCount: 1
+
+# Container image
 image:
   repository: ghcr.io/danwinga/si-backend
   tag: latest
+  pullPolicy: IfNotPresent
 
-secretName: si-backend-secret
-
-replicaCount: 1
-
-# Expose containerPort 8000 → service port 8000
+# Service ports
 service:
-  port: 8000
-  targetPort: 8000
+  port: 80          # the ClusterIP service port
+  targetPort: 8000  # the container port your Django app listens on
 
-# Enable Route on that same port
+# Route settings
 route:
   enabled: true
-  host: ""   # leave blank to let OCP auto-generate <name>-<ns>.<cluster>
+  # host: ""        # optional override; if empty OpenShift will assign
+
+# The Kubernetes Secret holding all your envFrom vars
+secretName: si-backend-secret
