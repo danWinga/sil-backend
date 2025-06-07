@@ -52,41 +52,33 @@ jobs:
             namespace: $NAMESPACE
           type: Opaque
           stringData:
-            # Django core settings
+            # Django settings
             SECRET_KEY:              "${{ secrets.SECRET_KEY }}"
             DEBUG:                   "False"
             ALLOWED_HOSTS:           "*"
 
-            # Database (Postgres)
+            # PostgreSQL (Bitnami chart)
             DATABASE_URL:            "postgres://postgres:postgres@si-postgres-postgresql:5432/postgres"
 
-            # Message broker (RabbitMQ)
+            # RabbitMQ (Bitnami chart)
             RABBITMQ_URL:            "amqp://guest:guest@si-rabbitmq:5672/"
             BROKER_URL:              "amqp://guest:guest@si-rabbitmq:5672/"
             CELERY_BROKER_URL:       "amqp://guest:guest@si-rabbitmq:5672/"
 
-            # OIDC / Keycloak
+            # Keycloak OIDC settings
             OIDC_OP_ISSUER:          "https://si-keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com/realms/si"
             OIDC_RP_CLIENT_ID:       "si-backend"
             OIDC_RP_CLIENT_SECRET:   "supersecret"
 
-            # Static & secure cookie settings
-            SESSION_COOKIE_SECURE:   "True"
-            CSRF_COOKIE_SECURE:      "True"
-            CSRF_TRUSTED_ORIGINS:    "https://si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com"
-
-            # SMS (Africa's Talking)
+            # Africa’s Talking SMS
             AFRICAS_TALKING_USERNAME: "${{ secrets.AFRICAS_TALKING_USERNAME }}"
             AFRICAS_TALKING_API_KEY:  "${{ secrets.AFRICAS_TALKING_API_KEY }}"
 
-            # Email (SMTP)
-            EMAIL_BACKEND:           "django.core.mail.backends.smtp.EmailBackend"
+            # SMTP email
             EMAIL_HOST:              "${{ secrets.EMAIL_HOST }}"
             EMAIL_PORT:              "${{ secrets.EMAIL_PORT }}"
-            EMAIL_USE_TLS:           "True"
             EMAIL_HOST_USER:         "${{ secrets.EMAIL_HOST_USER }}"
             EMAIL_HOST_PASSWORD:     "${{ secrets.EMAIL_HOST_PASSWORD }}"
-            DEFAULT_FROM_EMAIL:      "${{ secrets.DEFAULT_FROM_EMAIL }}"
             ADMIN_EMAIL:             "${{ secrets.ADMIN_EMAIL }}"
           EOF
 
