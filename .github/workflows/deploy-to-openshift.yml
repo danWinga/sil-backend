@@ -2,7 +2,8 @@ name: CD → OpenShift via Helm
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -22,9 +23,10 @@ jobs:
       IMAGE_REPO: ghcr.io/danwinga/si-backend
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Determine IMAGE_TAG
+      - name: Set IMAGE_TAG
         run: echo "IMAGE_TAG=${GITHUB_SHA}" >> $GITHUB_ENV
 
       - name: Install oc CLI
@@ -40,8 +42,10 @@ jobs:
             --insecure-skip-tls-verify
           oc project ${PROJECT}
 
-      - name: Wait for Postgres
-        run: oc rollout status statefulset/si-postgres-postgresql -n ${NAMESPACE} --timeout=2m
+      - name: Wait for Postgres Endpoints
+        run: |
+          oc wait --for=condition=ready endpoints/si-postgres-postgresql \
+            -n ${NAMESPACE} --timeout=5m
 
       - name: Create/Update core Secret
         run: |
@@ -60,8 +64,8 @@ jobs:
             RABBITMQ_URL:          "amqp://guest:guest@si-rabbitmq:5672/"
             BROKER_URL:            "amqp://guest:guest@si-rabbitmq:5672/"
             CELERY_BROKER_URL:     "amqp://guest:guest@si-rabbitmq:5672/"
-            AFRICAS_TALKING_USERNAME: "${{ secrets.AFRICAS_TALKING_USERNAME }}"
-            AFRICAS_TALKING_API_KEY:  "${{ secrets.AFRICAS_TALKING_API_KEY }}"
+            AFRICAS_TALKING_USERNAME:  "${{ secrets.AFRICAS_TALKING_USERNAME }}"
+            AFRICAS_TALKING_API_KEY:   "${{ secrets.AFRICAS_TALKING_API_KEY }}"
             EMAIL_HOST:            "${{ secrets.EMAIL_HOST }}"
             EMAIL_PORT:            "${{ secrets.EMAIL_PORT }}"
             EMAIL_HOST_USER:       "${{ secrets.EMAIL_HOST_USER }}"
@@ -69,7 +73,7 @@ jobs:
             ADMIN_EMAIL:           "${{ secrets.ADMIN_EMAIL }}"
           EOF
 
-      - name: Patch with Keycloak OIDC
+      - name: Patch Secret with Keycloak OIDC
         run: |
           oc patch secret/${SECRET_NAME} -n ${NAMESPACE} --type=merge -p='
           {
@@ -85,12 +89,12 @@ jobs:
         with:
           version: v3.12.0
 
-      - name: Add Bitnami repo
+      - name: Add Bitnami repo & update
         run: |
           helm repo add bitnami https://charts.bitnami.com/bitnami
           helm repo update
 
-      - name: Deploy API
+      - name: Deploy/Upgrade API chart
         run: |
           helm upgrade --install si-api ${CHART_API} \
             --namespace ${NAMESPACE} \
@@ -98,7 +102,7 @@ jobs:
             --set image.tag=${IMAGE_TAG} \
             --set secretName=${SECRET_NAME}
 
-      - name: Deploy Worker
+      - name: Deploy/Upgrade Worker chart
         run: |
           helm upgrade --install si-worker ${CHART_WORKER} \
             --namespace ${NAMESPACE} \
@@ -106,7 +110,7 @@ jobs:
             --set image.tag=${IMAGE_TAG} \
             --set secretName=${SECRET_NAME}
 
-      - name: Wait for rollout
+      - name: Wait for API rollout
         run: |
-          oc rollout status deployment/si-api   -n ${NAMESPACE} --timeout=2m
+          oc rollout status deployment/si-api -n ${NAMESPACE} --timeout=2m
           oc rollout status deployment/si-worker -n ${NAMESPACE} --timeout=2m
