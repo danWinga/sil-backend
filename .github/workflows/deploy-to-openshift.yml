@@ -21,6 +21,9 @@ jobs:
       CHART_API: helm/si-backend-api
       CHART_WORKER: helm/si-notifications-worker
       IMAGE_REPO: ghcr.io/danwinga/si-backend
+      # if you want to parameterize your Keycloak route:
+      # KEYCLOAK_ROUTE: keycloak-danwinga-dev.apps.<cluster-domain>
+      # otherwise just hardcode below
 
     steps:
       - name: Checkout code
@@ -52,13 +55,20 @@ jobs:
             namespace: ${NAMESPACE}
           type: Opaque
           stringData:
+            # Django & core
             SECRET_KEY:            "${{ secrets.SECRET_KEY }}"
             DEBUG:                 "False"
             ALLOWED_HOSTS:         "*"
+            # Database & Broker
             DATABASE_URL:          "postgres://postgres:postgres@si-postgres-postgresql:5432/postgres"
             RABBITMQ_URL:          "amqp://guest:guest@si-rabbitmq:5672/"
             BROKER_URL:            "amqp://guest:guest@si-rabbitmq:5672/"
             CELERY_BROKER_URL:     "amqp://guest:guest@si-rabbitmq:5672/"
+            # OIDC / Keycloak
+            OIDC_OP_ISSUER:        "https://keycloak-danwinga-dev.apps.<cluster-domain>/realms/si"
+            OIDC_RP_CLIENT_ID:     "backend-client"
+            OIDC_RP_CLIENT_SECRET: "${{ secrets.OIDC_RP_CLIENT_SECRET }}"
+            # SMS & Email
             AFRICAS_TALKING_USERNAME: "${{ secrets.AFRICAS_TALKING_USERNAME }}"
             AFRICAS_TALKING_API_KEY:  "${{ secrets.AFRICAS_TALKING_API_KEY }}"
             EMAIL_HOST:            "${{ secrets.EMAIL_HOST }}"
