@@ -1,4 +1,4 @@
-name: CD → OpenShift via Helm
+name: CD → OpenShift via Helm and Git
 
 on:
   push:
