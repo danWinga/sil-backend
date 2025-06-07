@@ -15,55 +15,54 @@ spec:
         app: {{ .Release.Name }}
     spec:
       initContainers:
-        - name: migrate
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          workingDir: /app
-          envFrom:
-            - secretRef:
-                name: {{ .Values.secretName }}
-          command:
-            - sh
-            - -c
-            - |
-              echo "⏳ Waiting for Postgres at $DATABASE_URL …"
-              until python - <<'PYCODE'
-import os, sys, psycopg2
-try:
-    # try to connect, exit 0 on success
-    psycopg2.connect(os.environ["DATABASE_URL"])
-except Exception:
-    sys.exit(1)
-sys.exit(0)
-PYCODE
-              do
-                echo "❌ still waiting…"
-                sleep 3
-              done
-              echo "✅ Postgres is ready—running migrations"
-              python manage.py migrate --noinput --fake-initial
+      - name: migrate
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        workingDir: /app
+        envFrom:
+        - secretRef:
+            name: {{ .Values.secretName }}
+        command:
+        - sh
+        - -c
+        - |
+          echo "⏳ Waiting for Postgres at $DATABASE_URL …"
+          until python - << 'PYCODE'
+          import os, sys, psycopg2
+          try:
+              psycopg2.connect(os.environ["DATABASE_URL"])
+          except Exception:
+              sys.exit(1)
+          sys.exit(0)
+          PYCODE
+          do
+            echo "❌ still waiting…"
+            sleep 3
+          done
+          echo "✅ Postgres is ready—running migrations"
+          python manage.py migrate --noinput --fake-initial
 
       containers:
-        - name: api
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          workingDir: /app
-          ports:
-            - name: http
-              containerPort: {{ .Values.service.targetPort }}
-          envFrom:
-            - secretRef:
-                name: {{ .Values.secretName }}
-          readinessProbe:
-            tcpSocket:
-              port: {{ .Values.service.targetPort }}
-            initialDelaySeconds: 10
-            periodSeconds: 5
-          resources:
-            limits:
-              cpu: "1"
-              memory: "512Mi"
-            requests:
-              cpu: "10m"
-              memory: "64Mi"
+      - name: api
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        workingDir: /app
+        ports:
+        - name: http
+          containerPort: {{ .Values.service.targetPort }}
+        envFrom:
+        - secretRef:
+            name: {{ .Values.secretName }}
+        readinessProbe:
+          tcpSocket:
+            port: {{ .Values.service.targetPort }}
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          limits:
+            cpu: "1"
+            memory: "512Mi"
+          requests:
+            cpu: "10m"
+            memory: "64Mi"
       restartPolicy: Always
