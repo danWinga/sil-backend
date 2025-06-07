@@ -42,8 +42,7 @@ jobs:
             --insecure-skip-tls-verify
           oc project ${PROJECT}
 
-      - name: Create/Update core Kubernetes Secret
-        # note: we are *not* injecting OIDC here, so the migrate Job can run uninhibited
+      - name: Create/Update Kubernetes Secret
         run: |
           oc apply -f - <<EOF
           apiVersion: v1
@@ -95,7 +94,7 @@ jobs:
                 restartPolicy: OnFailure
           EOF
           oc wait job migrate-${{ github.run_id }} -n ${NAMESPACE} --for=condition=complete --timeout=120s
-
+     
       - name: Patch Secret with OIDC settings
         # now that migrations are done, inject the Keycloak OIDC vars
         run: |
