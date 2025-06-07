@@ -58,6 +58,8 @@ jobs:
             ALLOWED_HOSTS:           "*"
             ALLOWED_HOSTS:         "si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com"
             CSRF_TRUSTED_ORIGINS:  "https://si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com"
+            SESSION_COOKIE_SECURE:    "True"
+            CSRF_COOKIE_SECURE:       "True"
 
             # PostgreSQL (Bitnami chart)
             DATABASE_URL:            "postgres://postgres:postgres@si-postgres-postgresql:5432/postgres"
