@@ -1,6 +1,6 @@
 # .github/workflows/deploy-to-openshift.yml
 
-name: CD → OpenShift via Helm and Github
+name: CD → OpenShift via Helm
 
 on:
   push:
@@ -52,36 +52,34 @@ jobs:
             namespace: $NAMESPACE
           type: Opaque
           stringData:
-            # Core Django config
-            SECRET_KEY:            "${{ secrets.SECRET_KEY }}"
-            DEBUG:                 "False"
-            ALLOWED_HOSTS:         "*"
+            # Django settings
+            SECRET_KEY:              "${{ secrets.SECRET_KEY }}"
+            DEBUG:                   "False"
+            ALLOWED_HOSTS:           "*"
 
-            # Postgres (Bitnami chart service name)
-            DATABASE_URL:          "postgres://postgres:postgres@si-postgres-postgresql:5432/postgres"
+            # PostgreSQL (Bitnami chart)
+            DATABASE_URL:            "postgres://postgres:postgres@si-postgres-postgresql:5432/postgres"
 
-            # RabbitMQ (Bitnami chart service name)
-            RABBITMQ_URL:          "amqp://guest:guest@si-rabbitmq:5672/"
-            BROKER_URL:            "amqp://guest:guest@si-rabbitmq:5672/"
-            CELERY_BROKER_URL:     "amqp://guest:guest@si-rabbitmq:5672/"
+            # RabbitMQ (Bitnami chart)
+            RABBITMQ_URL:            "amqp://guest:guest@si-rabbitmq:5672/"
+            BROKER_URL:              "amqp://guest:guest@si-rabbitmq:5672/"
+            CELERY_BROKER_URL:       "amqp://guest:guest@si-rabbitmq:5672/"
 
-            # OIDC / Keycloak
-            # You must have exposed Keycloak via an OpenShift Route named "keycloak-route"
-            # Replace <cluster-domain> with your actual cluster domain
-            OIDC_OP_ISSUER:        "https://keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com/realms/si"
-            OIDC_RP_CLIENT_ID:     "backend-client"
-            OIDC_RP_CLIENT_SECRET: "changeme"
+            # Keycloak OIDC settings
+            OIDC_OP_ISSUER:          "https://si-keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com/realms/si"
+            OIDC_RP_CLIENT_ID:       "si-backend"
+            OIDC_RP_CLIENT_SECRET:   "supersecret"
 
-            # Africa's Talking
+            # Africa’s Talking SMS
             AFRICAS_TALKING_USERNAME: "${{ secrets.AFRICAS_TALKING_USERNAME }}"
             AFRICAS_TALKING_API_KEY:  "${{ secrets.AFRICAS_TALKING_API_KEY }}"
 
-            # SMTP Email
-            EMAIL_HOST:            "${{ secrets.EMAIL_HOST }}"
-            EMAIL_PORT:            "${{ secrets.EMAIL_PORT }}"
-            EMAIL_HOST_USER:       "${{ secrets.EMAIL_HOST_USER }}"
-            EMAIL_HOST_PASSWORD:   "${{ secrets.EMAIL_HOST_PASSWORD }}"
-            ADMIN_EMAIL:           "${{ secrets.ADMIN_EMAIL }}"
+            # SMTP email
+            EMAIL_HOST:              "${{ secrets.EMAIL_HOST }}"
+            EMAIL_PORT:              "${{ secrets.EMAIL_PORT }}"
+            EMAIL_HOST_USER:         "${{ secrets.EMAIL_HOST_USER }}"
+            EMAIL_HOST_PASSWORD:     "${{ secrets.EMAIL_HOST_PASSWORD }}"
+            ADMIN_EMAIL:             "${{ secrets.ADMIN_EMAIL }}"
           EOF
 
       - name: Set up Helm
@@ -100,7 +98,8 @@ jobs:
             --namespace $NAMESPACE \
             --set image.repository=$IMAGE_REPO \
             --set image.tag=$IMAGE_TAG \
-            --set secretName=$SECRET_NAME
+            --set secretName=$SECRET_NAME \
+            --wait
 
       - name: Deploy/Upgrade Worker chart
         run: |
@@ -108,7 +107,8 @@ jobs:
             --namespace $NAMESPACE \
             --set image.repository=$IMAGE_REPO \
             --set image.tag=$IMAGE_TAG \
-            --set secretName=$SECRET_NAME
+            --set secretName=$SECRET_NAME \
+            --wait
 
       - name: Wait for rollout
         run: |
