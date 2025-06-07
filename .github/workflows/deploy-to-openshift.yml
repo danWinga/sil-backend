@@ -94,7 +94,7 @@ jobs:
                 restartPolicy: OnFailure
           EOF
           oc wait job migrate-${{ github.run_id }} -n ${NAMESPACE} --for=condition=complete --timeout=120s
-     
+        
       - name: Patch Secret with OIDC settings
         # now that migrations are done, inject the Keycloak OIDC vars
         run: |
