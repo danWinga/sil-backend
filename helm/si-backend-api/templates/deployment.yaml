@@ -14,7 +14,6 @@ spec:
       labels:
         app: {{ .Release.Name }}
     spec:
-      # 1) Run migrations before the API starts
       initContainers:
         - name: migrate
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -28,7 +27,6 @@ spec:
             - |
               echo "⏳ Running Django migrations..."
               python manage.py migrate --noinput
-      # 2) Now start the API
       containers:
         - name: api
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -39,8 +37,13 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ .Values.secretName }}
+          # Add a TCP readiness probe so OpenShift marks the pod Available
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.service.targetPort }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
           resources:
-            # optional defaults, override via values.yaml if desired
             limits:
               cpu: "1"
               memory: "512Mi"
