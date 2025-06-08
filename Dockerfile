@@ -25,6 +25,11 @@ COPY . /app/
 # 5) Collect static assets (WhiteNoise will serve them)
 RUN python manage.py collectstatic --noinput
 
+# 4) Expose port & start Gunicorn + WhiteNoise
+ENV STATIC_URL=/static/
+ENV STATIC_ROOT=/app/staticfiles
+ENV DJANGO_SETTINGS_MODULE=config.settings
+
 # 6) Expose port and switch to a production WSGI server
 EXPOSE 8000
 CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
