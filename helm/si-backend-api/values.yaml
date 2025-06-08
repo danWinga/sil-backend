@@ -4,10 +4,14 @@
 replicaCount: 1
 
 # Container image
+# image:
+#   repository: ghcr.io/danwinga/si-backend
+#   tag: latest
+#   pullPolicy: IfNotPresent
 image:
   repository: ghcr.io/danwinga/si-backend
   tag: latest
-  pullPolicy: IfNotPresent
+  pullPolicy: Always     # <— add this
 
 # Service ports
 service:
