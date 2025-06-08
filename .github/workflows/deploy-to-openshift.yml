@@ -4,8 +4,7 @@ name: CD → OpenShift via Helm
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -15,19 +14,27 @@ permissions:
 env:
   PROJECT: danwinga-dev
   NAMESPACE: danwinga-dev
+
+  # Shared image info
   SECRET_NAME: si-backend-secret
-  CHART_API: helm/si-backend-api
-  CHART_WORKER: helm/si-notifications-worker
   IMAGE_REPO: ghcr.io/danwinga/si-backend
   IMAGE_TAG: latest
+
+  # Helm chart paths
+  CHART_API: helm/si-backend-api
+  CHART_WORKER: helm/si-notifications-worker
+  CHART_KEYCLOAK: helm/si-keycloak
+
+  # Keycloak route host (no /realms/... suffix here)
+  KEYCLOAK_HOST: si-keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com
+  API_HOST:      si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install oc CLI
         run: |
@@ -42,7 +49,7 @@ jobs:
             --insecure-skip-tls-verify
           oc project $PROJECT
 
-      - name: Create/Update Kubernetes Secret
+      - name: Create/Update Django Secret
         run: |
           oc apply -f - <<EOF
           apiVersion: v1
@@ -52,36 +59,31 @@ jobs:
             namespace: $NAMESPACE
           type: Opaque
           stringData:
-            # Django settings
-            SECRET_KEY:              "${{ secrets.SECRET_KEY }}"
-            DEBUG:                   "False"
-            ALLOWED_HOSTS:           "*"
-            ALLOWED_HOSTS:         "si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com"
-            CSRF_TRUSTED_ORIGINS:  "https://si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com"
+            # Django core
+            SECRET_KEY:            "${{ secrets.SECRET_KEY }}"
+            DEBUG:                 "False"
+            ALLOWED_HOSTS:         "${API_HOST}"
+            CSRF_TRUSTED_ORIGINS:  "https://${API_HOST}"
 
-            # PostgreSQL (Bitnami chart)
-            DATABASE_URL:            "postgres://postgres:postgres@si-postgres-postgresql:5432/postgres"
+            # Database & Broker
+            DATABASE_URL:          "postgres://postgres:postgres@si-postgres-postgresql:5432/postgres"
+            RABBITMQ_URL:          "amqp://guest:guest@si-rabbitmq:5672/"
+            BROKER_URL:            "amqp://guest:guest@si-rabbitmq:5672/"
+            CELERY_BROKER_URL:     "amqp://guest:guest@si-rabbitmq:5672/"
 
-            # RabbitMQ (Bitnami chart)
-            RABBITMQ_URL:            "amqp://guest:guest@si-rabbitmq:5672/"
-            BROKER_URL:              "amqp://guest:guest@si-rabbitmq:5672/"
-            CELERY_BROKER_URL:       "amqp://guest:guest@si-rabbitmq:5672/"
+            # OIDC / Keycloak
+            OIDC_OP_ISSUER:        "https://${KEYCLOAK_HOST}/realms/si"
+            OIDC_RP_CLIENT_ID:     "backend-client"
+            OIDC_RP_CLIENT_SECRET: "${{ secrets.OIDC_RP_CLIENT_SECRET }}"
 
-            # Keycloak OIDC settings
-            OIDC_OP_ISSUER:          "https://si-keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com/realms/si"
-            OIDC_RP_CLIENT_ID:       "si-backend"
-            OIDC_RP_CLIENT_SECRET:   "supersecret"
-
-            # Africa’s Talking SMS
+            # SMS & Email
             AFRICAS_TALKING_USERNAME: "${{ secrets.AFRICAS_TALKING_USERNAME }}"
             AFRICAS_TALKING_API_KEY:  "${{ secrets.AFRICAS_TALKING_API_KEY }}"
-
-            # SMTP email
-            EMAIL_HOST:              "${{ secrets.EMAIL_HOST }}"
-            EMAIL_PORT:              "${{ secrets.EMAIL_PORT }}"
-            EMAIL_HOST_USER:         "${{ secrets.EMAIL_HOST_USER }}"
-            EMAIL_HOST_PASSWORD:     "${{ secrets.EMAIL_HOST_PASSWORD }}"
-            ADMIN_EMAIL:             "${{ secrets.ADMIN_EMAIL }}"
+            EMAIL_HOST:            "${{ secrets.EMAIL_HOST }}"
+            EMAIL_PORT:            "${{ secrets.EMAIL_PORT }}"
+            EMAIL_HOST_USER:       "${{ secrets.EMAIL_HOST_USER }}"
+            EMAIL_HOST_PASSWORD:   "${{ secrets.EMAIL_HOST_PASSWORD }}"
+            ADMIN_EMAIL:           "${{ secrets.ADMIN_EMAIL }}"
           EOF
 
       - name: Set up Helm
@@ -93,6 +95,15 @@ jobs:
         run: |
           helm repo add bitnami https://charts.bitnami.com/bitnami
           helm repo update
+
+      - name: Deploy Keycloak chart
+        run: |
+          helm upgrade --install si-keycloak $CHART_KEYCLOAK \
+            --namespace $NAMESPACE \
+            --set keycloak.host="${KEYCLOAK_HOST}" \
+            --set keycloak.proxy.edge=true \
+            --set keycloak.hostname-strict=false \
+            --wait
 
       - name: Deploy/Upgrade API chart
         run: |
@@ -114,5 +125,5 @@ jobs:
 
       - name: Wait for rollout
         run: |
-          oc rollout status deployment/si-api   -n $NAMESPACE --timeout=2m
+          oc rollout status deployment/si-api    -n $NAMESPACE --timeout=2m
           oc rollout status deployment/si-worker -n $NAMESPACE --timeout=2m
