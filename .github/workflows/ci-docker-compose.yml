@@ -1,4 +1,5 @@
-name: CI via Docker Compose, Publish & Static Docs
+# .github/workflows/ci-docker-compose.yaml
+name: CI via Docker Compose & GitHub Pages
 
 on:
   push:
@@ -6,10 +7,17 @@ on:
   pull_request:
     branches: [ main ]
 
+# Required permissions for the Pages actions
+permissions:
+  contents: read       # for checkout
+  pages: write         # to push to GitHub Pages
+  id-token: write      # for OIDC token that configure-pages uses
+
 env:
   IMAGE_NAME: si-backend
 
 jobs:
+
   test-and-docs:
     runs-on: ubuntu-latest
     defaults:
@@ -52,7 +60,7 @@ jobs:
           ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
           EOF
 
-      - name: Build & start Postgres + RabbitMQ
+      - name: Build & Start Postgres + RabbitMQ
         run: |
           docker compose build
           docker compose up -d postgres rabbitmq
@@ -74,42 +82,54 @@ jobs:
           docker compose run --rm web python manage.py migrate --noinput
           docker compose run --rm web pytest --maxfail=1 --disable-warnings -q --cov=.
 
-      # —— Docs generation happens _before_ we tear down Compose! ——
+      - name: Tear down Compose
+        if: always()
+        run: docker compose down --volumes --remove-orphans
+
+      # ——— STATIC DOCS GENERATION ———
 
       - name: Generate OpenAPI JSON
         run: |
-          # This writes docs/openapi.json _into_ your checked-out tree
-          docker compose run --rm web python manage.py spectacular --file docs/openapi.json
-
-      - name: Bundle ReDoc static HTML (via npx)
-        run: |
+          # This writes directly into ./docs/openapi.json
           mkdir -p docs
-          npx @redocly/cli@latest bundle docs/openapi.json \
-            -o docs/redoc.html
+          docker compose run --rm web \
+            python manage.py spectacular --file docs/openapi.json
 
-      - name: Generate Swagger UI static files
+      - name: Generate ReDoc HTML
         run: |
-          mkdir -p docs/swagger
-          npm install swagger-ui-dist@latest
-          cp node_modules/swagger-ui-dist/swagger-ui.css       docs/swagger/
-          cp node_modules/swagger-ui-dist/swagger-ui-bundle.js docs/swagger/
-          cp node_modules/swagger-ui-dist/swagger-ui-standalone-preset.js docs/swagger/
-          cat > docs/swagger/index.html <<'EOF'
+          cat > docs/index.html <<'EOF'
           <!DOCTYPE html>
           <html>
             <head>
               <meta charset="UTF-8"/>
-              <title>SI Backend Swagger UI</title>
-              <link rel="stylesheet" href="./swagger-ui.css"/>
+              <title>SI Backend API (ReDoc)</title>
+              <script src="https://unpkg.com/redoc@next/bundles/redoc.standalone.js"></script>
+            </head>
+            <body>
+              <redoc spec-url="openapi.json"></redoc>
+            </body>
+          </html>
+          EOF
+
+      - name: Generate Swagger-UI HTML
+        run: |
+          cat > docs/swagger.html <<'EOF'
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="UTF-8"/>
+              <title>SI Backend API (Swagger-UI)</title>
+              <link rel="stylesheet"
+                    href="https://unpkg.com/swagger-ui-dist/swagger-ui.css">
             </head>
             <body>
               <div id="swagger-ui"></div>
-              <script src="./swagger-ui-bundle.js"></script>
-              <script src="./swagger-ui-standalone-preset.js"></script>
+              <script src="https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js"></script>
+              <script src="https://unpkg.com/swagger-ui-dist/swagger-ui-standalone-preset.js"></script>
               <script>
                 window.onload = () => {
                   SwaggerUIBundle({
-                    url: "/openapi.json",
+                    url: "openapi.json",
                     dom_id: "#swagger-ui",
                     presets: [
                       SwaggerUIBundle.presets.apis,
@@ -122,42 +142,43 @@ jobs:
           </html>
           EOF
 
-      - name: Tear down Compose
-        if: always()
-        run: docker compose down --volumes --remove-orphans
+      - name: Upload documentation for GitHub Pages
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: docs
 
-      - name: Commit & deploy docs to gh-pages
-        if: github.ref == 'refs/heads/main'
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout --orphan gh-pages
-          git reset --hard
-          # Copy the spec + our two static sites into the root
-          cp docs/openapi.json openapi.json
-          cp docs/redoc.html    index.html
-          cp -R docs/swagger     swagger
-          git add openapi.json index.html swagger
-          git commit -m "ci: update static API docs"
-          git push -f origin gh-pages
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: test-and-docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy
+        uses: actions/deploy-pages@v1
 
   publish:
+    name: Build & Push Docker Image
     needs: test-and-docs
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v2
-      - uses: docker/login-action@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v2
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Lowercase owner
-        run: |
-          echo "OWNER=$(echo '${{ github.repository_owner }}' \
-            | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-      - uses: docker/build-push-action@v4
+        run: echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Build & push image to GHCR
+        uses: docker/build-push-action@v4
         with:
           context: .
           file: Dockerfile
