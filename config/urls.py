@@ -33,22 +33,22 @@ urlpatterns = [
 ]
 
 
-urlpatterns += [
-  path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
-  path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
-  path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
-]
+# urlpatterns += [
+#   path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+#   path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+#   path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
+# ]
 
-# urlpatterns = [
-#     # Admin
-#     path("admin/", admin.site.urls),
+urlpatterns = [
+    # Admin
+    path("admin/", admin.site.urls),
 
-#     # API endpoints (protected by OIDC or BasicAuth in DEBUG)
-#     path("api/", include(router.urls)),
+    # API endpoints (protected by OIDC or BasicAuth in DEBUG)
+    path("api/", include(router.urls)),
     
 
-#     # OpenAPI schema and documentation (public)
-#     path("api/schema/", schema_view, name="schema"),
-#     path("api/docs/", swagger_view, name="swagger-ui"),
-#     path("api/redoc/", redoc_view, name="redoc"),
-# ]
+    # OpenAPI schema and documentation (public)
+    path("api/schema/", schema_view, name="schema"),
+    path("api/docs/", swagger_view, name="swagger-ui"),
+    path("api/redoc/", redoc_view, name="redoc"),
+]

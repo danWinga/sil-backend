@@ -192,13 +192,14 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # # Only send CSRF & session cookies over HTTPS
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE    = True
+USE_X_FORWARDED_HOST = True
 
 # # Your OpenShift Route host must be trusted
 CSRF_TRUSTED_ORIGINS = env(
     "CSRF_TRUSTED_ORIGINS",
     cast=list,
     default=[
-        "https://si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com , https://si-keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com"
+        "https://si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com ,, https://si-keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com"
     ]
 )
 #--------------------------------------------------------------------------
