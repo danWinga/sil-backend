@@ -52,10 +52,11 @@ jobs:
           ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
           EOF
 
-      - name: Build & bring up Postgres+RabbitMQ
-        run: |
-          docker compose build
-          docker compose up -d postgres rabbitmq
+      - name: Build Docker Compose images
+        run: docker compose build
+
+      - name: Bring up Postgres & RabbitMQ
+        run: docker compose up -d postgres rabbitmq
 
       - name: Wait for Postgres
         run: |
@@ -71,7 +72,7 @@ jobs:
             sleep 1
           done
 
-      - name: Run migrations & tests
+      - name: Run Django migrations & tests
         run: |
           docker compose run --rm web python manage.py migrate --noinput
           docker compose run --rm web pytest --maxfail=1 --disable-warnings -q --cov=.
@@ -83,8 +84,8 @@ jobs:
       # ---- Static API docs generation ----
 
       - name: Generate OpenAPI JSON
-        # redirect stdout out of the container into openapi.json on the host
-        run: docker compose run --rm web python manage.py spectacular --file - > openapi.json
+        run: |
+          docker compose run --rm web python manage.py spectacular --file openapi.json
 
       - name: Bundle ReDoc static HTML (via npx)
         run: |
@@ -158,7 +159,8 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Lowercase owner
-        run: echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+        run: echo "OWNER=$(echo '${{ github.repository_owner }}' \
+          | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Build & push image to GHCR
         uses: docker/build-push-action@v4
