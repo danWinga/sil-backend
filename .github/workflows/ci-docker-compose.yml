@@ -60,39 +60,31 @@ jobs:
       - name: Wait for Postgres
         run: |
           until docker compose exec -T postgres pg_isready -U postgres; do
-            echo "…waiting for Postgres"; sleep 1; done
+            echo "Waiting for Postgres…"; sleep 1;
+          done
 
       - name: Wait for RabbitMQ
         run: |
           until docker compose exec -T rabbitmq rabbitmqctl status; do
-            echo "…waiting for RabbitMQ"; sleep 1; done
+            echo "Waiting for RabbitMQ…"; sleep 1;
+          done
 
       - name: Run migrations & tests
         run: |
           docker compose run --rm web python manage.py migrate --noinput
           docker compose run --rm web pytest --maxfail=1 --disable-warnings -q --cov=.
 
-      - name: Tear down Compose
-        if: always()
-        run: docker compose down --volumes --remove-orphans
-
-      # ---- STATIC API DOCS GENERATION ----
-
-      - name: Prepare a local spec folder
-        run: mkdir -p docs/spec
+      # —— Docs generation happens _before_ we tear down Compose! ——
 
       - name: Generate OpenAPI JSON
         run: |
-          # Bind-mount docs/spec into the container so 'spectacular' writes here
-          docker compose run --rm \
-            -v "${{ github.workspace }}/docs/spec:/app/docs/spec" \
-            web \
-            python manage.py spectacular --file docs/spec/openapi.json
+          # This writes docs/openapi.json _into_ your checked-out tree
+          docker compose run --rm web python manage.py spectacular --file docs/openapi.json
 
       - name: Bundle ReDoc static HTML (via npx)
         run: |
           mkdir -p docs
-          npx @redocly/cli@latest bundle docs/spec/openapi.json \
+          npx @redocly/cli@latest bundle docs/openapi.json \
             -o docs/redoc.html
 
       - name: Generate Swagger UI static files
@@ -108,24 +100,31 @@ jobs:
             <head>
               <meta charset="UTF-8"/>
               <title>SI Backend Swagger UI</title>
-              <link rel="stylesheet" href="swagger-ui.css"/>
+              <link rel="stylesheet" href="./swagger-ui.css"/>
             </head>
             <body>
               <div id="swagger-ui"></div>
-              <script src="swagger-ui-bundle.js"></script>
-              <script src="swagger-ui-standalone-preset.js"></script>
+              <script src="./swagger-ui-bundle.js"></script>
+              <script src="./swagger-ui-standalone-preset.js"></script>
               <script>
                 window.onload = () => {
                   SwaggerUIBundle({
-                    url: "/docs/spec/openapi.json",
+                    url: "/openapi.json",
                     dom_id: "#swagger-ui",
-                    presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+                    presets: [
+                      SwaggerUIBundle.presets.apis,
+                      SwaggerUIStandalonePreset
+                    ],
                   });
                 };
               </script>
             </body>
           </html>
           EOF
+
+      - name: Tear down Compose
+        if: always()
+        run: docker compose down --volumes --remove-orphans
 
       - name: Commit & deploy docs to gh-pages
         if: github.ref == 'refs/heads/main'
@@ -134,12 +133,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout --orphan gh-pages
           git reset --hard
-
-          # Copy our artifacts
-          cp docs/spec/openapi.json openapi.json
-          cp docs/redoc.html      index.html
-          cp -R docs/swagger       swagger
-
+          # Copy the spec + our two static sites into the root
+          cp docs/openapi.json openapi.json
+          cp docs/redoc.html    index.html
+          cp -R docs/swagger     swagger
           git add openapi.json index.html swagger
           git commit -m "ci: update static API docs"
           git push -f origin gh-pages
@@ -150,20 +147,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: docker/setup-buildx-action@v2
-
       - uses: docker/login-action@v2
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Lowercase owner
         run: |
           echo "OWNER=$(echo '${{ github.repository_owner }}' \
             | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-
       - uses: docker/build-push-action@v4
         with:
           context: .
