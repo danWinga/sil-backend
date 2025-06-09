@@ -35,7 +35,7 @@ data:
 
 ---
 # -------------------------------------------------------------------
-# 2) Keycloak Deployment (built-in H2 DB)
+# 2) Keycloak Deployment (built-in H2 DB, behind edge‐TLS)
 # -------------------------------------------------------------------
 apiVersion: apps/v1
 kind: Deployment
@@ -64,31 +64,29 @@ spec:
             - --http-port=8080
             - --import-realm
             - --hostname=si-keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com
+            - --proxy=edge
             - --hostname-strict=false
             - --hostname-strict-https=true
           env:
-            # import realm.json
+            # Trust the X-Forwarded-* headers from the OpenShift Router
+            - name: PROXY_ADDRESS_FORWARDING
+              value: "true"
+
+            # Import realm JSON
             - name: KEYCLOAK_IMPORT
               value: "/opt/keycloak/data/import/realm.json"
-            # admin credentials
+
+            # Admin credentials
             - name: KEYCLOAK_ADMIN
               value: "admin"
             - name: KEYCLOAK_ADMIN_PASSWORD
               value: "admin"
-            # enable health & metrics endpoints
+
+            # Health & metrics
             - name: KC_HEALTH_ENABLED
               value: "true"
             - name: KC_METRICS_ENABLED
               value: "true"
-            # disable internal HTTP and advertise only HTTPS on port 443
-            - name: KC_HTTP_ENABLED
-              value: "false"
-            - name: KC_HTTPS_PORT
-              value: "8443"
-            - name: KC_HOSTNAME_PORT
-              value: "8443"
-            - name: KC_PROXY
-              value: "edge"
           ports:
             - containerPort: 8080
           volumeMounts:
@@ -102,7 +100,7 @@ spec:
 
 ---
 # -------------------------------------------------------------------
-# 3) Service on 80 → forwards to 8080
+# 3) Service on port 80 → forwards to containerPort 8080
 # -------------------------------------------------------------------
 apiVersion: v1
 kind: Service
@@ -122,7 +120,7 @@ spec:
 
 ---
 # -------------------------------------------------------------------
-# 4) OpenShift Route (edge TLS)
+# 4) OpenShift Route (edge TLS)  
 # -------------------------------------------------------------------
 apiVersion: route.openshift.io/v1
 kind: Route
