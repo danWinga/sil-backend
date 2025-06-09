@@ -12,9 +12,6 @@ env:
 jobs:
   test-and-docs:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ${{ github.workspace }}
 
     steps:
       - name: Checkout code
@@ -25,7 +22,7 @@ jobs:
         with:
           node-version: "18"
 
-      - name: Generate .env from Secrets
+      - name: Create .env from GitHub Secrets
         run: |
           cat > .env <<EOF
           SECRET_KEY=${{ secrets.SECRET_KEY }}
@@ -60,18 +57,16 @@ jobs:
       - name: Wait for Postgres
         run: |
           until docker compose exec -T postgres pg_isready -U postgres; do
-            echo "Waiting for Postgres…"
-            sleep 1
+            echo "Waiting for Postgres…"; sleep 1;
           done
 
       - name: Wait for RabbitMQ
         run: |
           until docker compose exec -T rabbitmq rabbitmqctl status; do
-            echo "Waiting for RabbitMQ…"
-            sleep 1
+            echo "Waiting for RabbitMQ…"; sleep 1;
           done
 
-      - name: Migrate & Test
+      - name: Run migrations & tests
         run: |
           docker compose run --rm web python manage.py migrate --noinput
           docker compose run --rm web pytest --maxfail=1 --disable-warnings -q --cov=.
@@ -80,12 +75,16 @@ jobs:
         if: always()
         run: docker compose down --volumes --remove-orphans
 
-      # ---- Static API docs generation ----
+      # ---- STATIC API DOCS GENERATION ----
 
       - name: Generate OpenAPI JSON
         run: |
-          # write openapi.json directly into your repo mount
-          docker compose run --rm web python manage.py spectacular --file openapi.json
+          # Bind-mount your checked-out repo into /app in the container,
+          # then ask Django to write /app/openapi.json, which lands on the host.
+          docker compose run --rm \
+            -v "${{ github.workspace }}:/app" \
+            web \
+            python manage.py spectacular --file /app/openapi.json
 
       - name: Bundle ReDoc static HTML (via npx)
         run: |
