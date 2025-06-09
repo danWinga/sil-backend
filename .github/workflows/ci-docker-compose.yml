@@ -52,11 +52,10 @@ jobs:
           ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
           EOF
 
-      - name: Build Docker Compose images
-        run: docker compose build
-
-      - name: Bring up Postgres & RabbitMQ
-        run: docker compose up -d postgres rabbitmq
+      - name: Build & bring up Postgres+RabbitMQ
+        run: |
+          docker compose build
+          docker compose up -d postgres rabbitmq
 
       - name: Wait for Postgres
         run: |
@@ -72,11 +71,10 @@ jobs:
             sleep 1
           done
 
-      - name: Run Django migrations
-        run: docker compose run --rm web python manage.py migrate --noinput
-
-      - name: Run test suite
-        run: docker compose run --rm web pytest --maxfail=1 --disable-warnings -q --cov=.
+      - name: Run migrations & tests
+        run: |
+          docker compose run --rm web python manage.py migrate --noinput
+          docker compose run --rm web pytest --maxfail=1 --disable-warnings -q --cov=.
 
       - name: Tear down Docker Compose
         if: always()
@@ -84,11 +82,9 @@ jobs:
 
       # ---- Static API docs generation ----
 
-      - name: Install drf-spectacular CLI
-        run: pip install drf-spectacular
-
       - name: Generate OpenAPI JSON
-        run: docker compose run --rm web python manage.py spectacular --file openapi.json
+        # redirect stdout out of the container into openapi.json on the host
+        run: docker compose run --rm web python manage.py spectacular --file - > openapi.json
 
       - name: Bundle ReDoc static HTML (via npx)
         run: |
