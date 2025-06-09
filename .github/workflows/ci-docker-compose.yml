@@ -118,7 +118,7 @@ jobs:
           <html>
             <head>
               <meta charset="UTF-8"/>
-              <title>SI Backend API (Swagger-UI)</title>
+              <title>SI Backend API docs (Swagger-UI)</title>
               <link rel="stylesheet"
                     href="https://unpkg.com/swagger-ui-dist/swagger-ui.css">
             </head>
