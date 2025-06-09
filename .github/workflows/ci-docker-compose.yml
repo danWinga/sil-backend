@@ -94,19 +94,15 @@ jobs:
         run: |
           mkdir -p docs
           npx @redocly/cli@latest bundle openapi.json \
-            --options.nativeScrollbars \
-            --options.hide-hostname \
             -o docs/redoc.html
 
       - name: Generate Swagger UI static files
         run: |
           mkdir -p docs/swagger
-          # Copy CSS/JS from swagger-ui-dist
           npm install swagger-ui-dist@latest
           cp node_modules/swagger-ui-dist/swagger-ui.css docs/swagger/
           cp node_modules/swagger-ui-dist/swagger-ui-bundle.js docs/swagger/
           cp node_modules/swagger-ui-dist/swagger-ui-standalone-preset.js docs/swagger/
-          # Create an initializer that points at our JSON
           cat > docs/swagger/index.html <<'EOF'
           <!DOCTYPE html>
           <html>
