@@ -90,13 +90,10 @@ jobs:
       - name: Generate OpenAPI JSON
         run: docker compose run --rm web python manage.py spectacular --file openapi.json
 
-      - name: Install Redoc CLI
-        run: npm install -g @redocly/cli
-
-      - name: Bundle ReDoc static HTML
+      - name: Bundle ReDoc static HTML (via npx)
         run: |
           mkdir -p docs
-          redoc-cli bundle openapi.json \
+          npx @redocly/cli@latest bundle openapi.json \
             --options.nativeScrollbars \
             --options.hide-hostname \
             -o docs/redoc.html
@@ -143,10 +140,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # Create or update gh-pages branch
           git checkout --orphan gh-pages
           git reset --hard
-          # Copy static files
           cp openapi.json docs/
           git add openapi.json docs/
           git commit -m "ci: update static API docs"
