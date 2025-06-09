@@ -161,13 +161,13 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE    = True
 
 # # Your OpenShift Route host must be trusted
-# CSRF_TRUSTED_ORIGINS = env(
-#     "CSRF_TRUSTED_ORIGINS",
-#     cast=list,
-#     default=[
-#         "https://si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com"
-#     ]
-# )
+CSRF_TRUSTED_ORIGINS = env(
+    "CSRF_TRUSTED_ORIGINS",
+    cast=list,
+    default=[
+        "https://si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com , https://si-keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com"
+    ]
+)
 #--------------------------------------------------------------------------
 
 # Static
