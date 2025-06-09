@@ -124,6 +124,9 @@ OIDC_OP_ISSUER        = env("OIDC_OP_ISSUER")
 OIDC_RP_CLIENT_ID     = env("OIDC_RP_CLIENT_ID")
 OIDC_RP_CLIENT_SECRET = env("OIDC_RP_CLIENT_SECRET")
 
+
+INSTALLED_APPS += ["drf_spectacular"]
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         # will be overridden in DEBUG below
@@ -133,6 +136,36 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ),
     "EXCEPTION_HANDLER": "config.exceptions.custom_exception_handler",
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "SI Backend API",
+    "DESCRIPTION": "OpenID-protected Django API for Categories, Products & Orders",
+    "VERSION": "1.0.0",
+    # add Bearer auth to swagger
+    "SECURITY": [{"bearerAuth": []}],
+    "COMPONENT_SPLIT_REQUEST": True,
+    "COMPONENT_NO_READ_ONLY_REQUIRED": True,
+    "SCHEMA_PATH_PREFIX": "/api",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "PREPROCESSING_HOOKS": [],
+    "POSTPROCESSING_HOOKS": [],
+    "ENUM_NAME_OVERRIDES": {},
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking": True,
+        "persistAuthorization": True,
+    },
+    "REDOC_UI_SETTINGS": {
+        "hideDownloadButton": True,
+    },
+    "SECURITY_SCHEMES": {
+        "bearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+        }
+    },
 }
 
 if DEBUG:
