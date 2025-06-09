@@ -45,6 +45,7 @@ urlpatterns = [
 
     # API endpoints (protected by OIDC or BasicAuth in DEBUG)
     path("api/", include(router.urls)),
+    path("api/schema/", include(router.urls),schema_view, name="schema"),
 
     # OpenAPI schema and documentation (public)
     path("api/schema/", schema_view, name="schema"),
