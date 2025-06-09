@@ -12,6 +12,9 @@ env:
 jobs:
   test-and-docs:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
 
     steps:
       - name: Checkout code
@@ -79,12 +82,9 @@ jobs:
 
       - name: Generate OpenAPI JSON
         run: |
-          # Bind-mount your checked-out repo into /app in the container,
-          # then ask Django to write /app/openapi.json, which lands on the host.
-          docker compose run --rm \
-            -v "${{ github.workspace }}:/app" \
-            web \
-            python manage.py spectacular --file /app/openapi.json
+          docker compose run -T --rm web \
+            python manage.py spectacular --file - 2>/dev/null \
+            > openapi.json
 
       - name: Bundle ReDoc static HTML (via npx)
         run: |
@@ -102,10 +102,8 @@ jobs:
           cat > docs/swagger/index.html <<'EOF'
           <!DOCTYPE html>
           <html>
-            <head>
-              <meta charset="UTF-8" />
-              <title>SI Backend Swagger UI</title>
-              <link rel="stylesheet" href="./swagger-ui.css" />
+            <head><meta charset="UTF-8"/><title>SI Backend Swagger UI</title>
+                     <link rel="stylesheet" href="./swagger-ui.css"/>
             </head>
             <body>
               <div id="swagger-ui"></div>
@@ -116,10 +114,7 @@ jobs:
                   SwaggerUIBundle({
                     url: "/openapi.json",
                     dom_id: "#swagger-ui",
-                    presets: [
-                      SwaggerUIBundle.presets.apis,
-                      SwaggerUIStandalonePreset
-                    ],
+                    presets: [ SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset ],
                   });
                 };
               </script>
@@ -130,12 +125,20 @@ jobs:
       - name: Commit & deploy docs to gh-pages
         if: github.ref == 'refs/heads/main'
         run: |
-          git config user.name "github-actions[bot]"
+          git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Start fresh
           git checkout --orphan gh-pages
           git reset --hard
-          cp openapi.json docs/
-          git add openapi.json docs/
+
+          # Copy artifacts into the root of the gh-pages branch
+          cp openapi.json       .
+          cp docs/redoc.html    index.html
+          cp -R docs/swagger    swagger
+
+          # Commit & force-push
+          git add openapi.json index.html swagger
           git commit -m "ci: update static API docs"
           git push -f origin gh-pages
 
@@ -159,8 +162,8 @@ jobs:
 
       - name: Lowercase owner
         run: |
-          echo "OWNER=$(echo '${{ github.repository_owner }}' \
-            | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" \
+            >> $GITHUB_ENV
 
       - name: Build & push image to GHCR
         uses: docker/build-push-action@v4
