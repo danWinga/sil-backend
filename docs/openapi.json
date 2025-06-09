@@ -1,0 +1,629 @@
+openapi: 3.0.3
+info:
+  title: SI Backend API
+  version: 1.0.0
+  description: OpenID-protected Django API for Categories, Products & Orders
+paths:
+  /api/categories/:
+    get:
+      operationId: categories_list
+      description: |-
+        list | retrieve | create | update | destroy
+        + GET /api/categories/{id}/average_price/
+      tags:
+      - categories
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+          description: ''
+    post:
+      operationId: categories_create
+      description: |-
+        list | retrieve | create | update | destroy
+        + GET /api/categories/{id}/average_price/
+      tags:
+      - categories
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+        required: true
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+  /api/categories/{id}/:
+    get:
+      operationId: categories_retrieve
+      description: |-
+        list | retrieve | create | update | destroy
+        + GET /api/categories/{id}/average_price/
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this category.
+        required: true
+      tags:
+      - categories
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+    put:
+      operationId: categories_update
+      description: |-
+        list | retrieve | create | update | destroy
+        + GET /api/categories/{id}/average_price/
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this category.
+        required: true
+      tags:
+      - categories
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+        required: true
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+    patch:
+      operationId: categories_partial_update
+      description: |-
+        list | retrieve | create | update | destroy
+        + GET /api/categories/{id}/average_price/
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this category.
+        required: true
+      tags:
+      - categories
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCategoryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCategoryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCategoryRequest'
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+    delete:
+      operationId: categories_destroy
+      description: |-
+        list | retrieve | create | update | destroy
+        + GET /api/categories/{id}/average_price/
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this category.
+        required: true
+      tags:
+      - categories
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/categories/{id}/average_price/:
+    get:
+      operationId: categories_average_price_retrieve
+      description: |-
+        list | retrieve | create | update | destroy
+        + GET /api/categories/{id}/average_price/
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this category.
+        required: true
+      tags:
+      - categories
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+  /api/orders/:
+    get:
+      operationId: orders_list
+      description: |-
+        POST /api/orders/ → creates an order + fires async SMS+email.
+        GET  /api/orders/ → list the authenticated user's orders.
+      tags:
+      - orders
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrderRead'
+          description: ''
+    post:
+      operationId: orders_create
+      description: |-
+        POST /api/orders/ → creates an order + fires async SMS+email.
+        GET  /api/orders/ → list the authenticated user's orders.
+      tags:
+      - orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrderCreateRequest'
+        required: true
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderCreate'
+          description: ''
+  /api/products/:
+    get:
+      operationId: products_list
+      description: POST /api/products/ accepts single object or list→bulk-create.
+      tags:
+      - products
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+          description: ''
+    post:
+      operationId: products_create
+      description: POST /api/products/ accepts single object or list→bulk-create.
+      tags:
+      - products
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+        required: true
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+  /api/products/{id}/:
+    get:
+      operationId: products_retrieve
+      description: POST /api/products/ accepts single object or list→bulk-create.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - products
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+    put:
+      operationId: products_update
+      description: POST /api/products/ accepts single object or list→bulk-create.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - products
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+        required: true
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+    patch:
+      operationId: products_partial_update
+      description: POST /api/products/ accepts single object or list→bulk-create.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - products
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProductRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProductRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProductRequest'
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+    delete:
+      operationId: products_destroy
+      description: POST /api/products/ accepts single object or list→bulk-create.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - products
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No response body
+components:
+  schemas:
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        slug:
+          type: string
+          maxLength: 255
+          pattern: ^[-a-zA-Z0-9_]+$
+        parent:
+          type: integer
+          nullable: true
+      required:
+      - name
+      - slug
+    CategoryRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: ^[-a-zA-Z0-9_]+$
+        parent:
+          type: integer
+          nullable: true
+      required:
+      - name
+      - slug
+    OrderCreate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        status:
+          enum:
+          - new
+          - processing
+          - completed
+          - canceled
+          type: string
+          description: |-
+            * `new` - New
+            * `processing` - Processing
+            * `completed` - Completed
+            * `canceled` - Canceled
+          x-spec-enum-id: c708b18bb214d29b
+          readOnly: true
+        total_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    OrderCreateRequest:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemInputRequest'
+          writeOnly: true
+      required:
+      - items
+    OrderItemInput:
+      type: object
+      properties:
+        product_id:
+          type: integer
+        quantity:
+          type: integer
+          minimum: 1
+      required:
+      - product_id
+      - quantity
+    OrderItemInputRequest:
+      type: object
+      properties:
+        product_id:
+          type: integer
+        quantity:
+          type: integer
+          minimum: 1
+      required:
+      - product_id
+      - quantity
+    OrderRead:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        customer:
+          type: string
+          readOnly: true
+        status:
+          enum:
+          - new
+          - processing
+          - completed
+          - canceled
+          type: string
+          description: |-
+            * `new` - New
+            * `processing` - Processing
+            * `completed` - Completed
+            * `canceled` - Canceled
+          x-spec-enum-id: c708b18bb214d29b
+        total_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        created_at:
+          type: string
+          format: date-time
+        items:
+          type: string
+          readOnly: true
+    PatchedCategoryRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: ^[-a-zA-Z0-9_]+$
+        parent:
+          type: integer
+          nullable: true
+    PatchedProductRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        categories:
+          type: array
+          items:
+            type: integer
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        categories:
+          type: array
+          items:
+            type: integer
+      required:
+      - categories
+      - name
+      - price
+    ProductRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        categories:
+          type: array
+          items:
+            type: integer
+      required:
+      - categories
+      - name
+      - price
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

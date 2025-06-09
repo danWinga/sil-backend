@@ -1,4 +1,4 @@
-name: CI via Docker Compose & Publish
+name: CI via Docker Compose, Publish & Static Docs
 
 on:
   push:
@@ -10,12 +10,20 @@ env:
   IMAGE_NAME: si-backend
 
 jobs:
-  test:
+  test-and-docs:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set up Node.js for static docs
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
 
       - name: Create .env from GitHub Secrets
         run: |
@@ -74,8 +82,78 @@ jobs:
         if: always()
         run: docker compose down --volumes --remove-orphans
 
+      # ---- Static API docs generation ----
+
+      - name: Install drf-spectacular CLI
+        run: pip install drf-spectacular
+
+      - name: Generate OpenAPI JSON
+        run: docker compose run --rm web python manage.py spectacular --file openapi.json
+
+      - name: Install Redoc CLI
+        run: npm install -g @redocly/cli
+
+      - name: Bundle ReDoc static HTML
+        run: |
+          mkdir -p docs
+          redoc-cli bundle openapi.json \
+            --options.nativeScrollbars \
+            --options.hide-hostname \
+            -o docs/redoc.html
+
+      - name: Generate Swagger UI static files
+        run: |
+          mkdir -p docs/swagger
+          # Copy CSS/JS from swagger-ui-dist
+          npm install swagger-ui-dist@latest
+          cp node_modules/swagger-ui-dist/swagger-ui.css docs/swagger/
+          cp node_modules/swagger-ui-dist/swagger-ui-bundle.js docs/swagger/
+          cp node_modules/swagger-ui-dist/swagger-ui-standalone-preset.js docs/swagger/
+          # Create an initializer that points at our JSON
+          cat > docs/swagger/index.html <<'EOF'
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="UTF-8" />
+              <title>SI Backend Swagger UI</title>
+              <link rel="stylesheet" href="./swagger-ui.css" />
+            </head>
+            <body>
+              <div id="swagger-ui"></div>
+              <script src="./swagger-ui-bundle.js"></script>
+              <script src="./swagger-ui-standalone-preset.js"></script>
+              <script>
+                window.onload = () => {
+                  SwaggerUIBundle({
+                    url: "/openapi.json",
+                    dom_id: "#swagger-ui",
+                    presets: [
+                      SwaggerUIBundle.presets.apis,
+                      SwaggerUIStandalonePreset
+                    ],
+                  });
+                };
+              </script>
+            </body>
+          </html>
+          EOF
+
+      - name: Commit & deploy docs to gh-pages
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Create or update gh-pages branch
+          git checkout --orphan gh-pages
+          git reset --hard
+          # Copy static files
+          cp openapi.json docs/
+          git add openapi.json docs/
+          git commit -m "ci: update static API docs"
+          git push -f origin gh-pages
+
   publish:
-    needs: test
+    needs: test-and-docs
     runs-on: ubuntu-latest
 
     steps:
@@ -85,15 +163,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Log in to GitHub Container Registry
+      - name: Log in to GHCR
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Lowercase owner into ENV
-        # GHCR repo names must be lowercase; github.repository_owner can be mixed-case
+      - name: Lowercase owner
         run: echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Build & push image to GHCR

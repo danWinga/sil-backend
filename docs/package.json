@@ -1,0 +1,17 @@
+{
+  "name": "docs",
+  "version": "1.0.0",
+  "description": "A Django + Celery backend for Savannah Informatics’ take-home assessment.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@redocly/cli": "^1.34.3",
+    "redoc-cli": "^0.13.21",
+    "swagger-ui-dist": "^5.24.0"
+  }
+}
