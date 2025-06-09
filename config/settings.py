@@ -127,6 +127,11 @@ OIDC_RP_CLIENT_SECRET = env("OIDC_RP_CLIENT_SECRET")
 
 INSTALLED_APPS += ["drf_spectacular"]
 
+ALLOWED_HOSTS = ["si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com"]
+CSRF_TRUSTED_ORIGINS = ["https://si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com"]
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         # will be overridden in DEBUG below
@@ -192,7 +197,7 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # # Only send CSRF & session cookies over HTTPS
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE    = True
-USE_X_FORWARDED_HOST = True
+# USE_X_FORWARDED_HOST = True
 
 # # Your OpenShift Route host must be trusted
 CSRF_TRUSTED_ORIGINS = env(

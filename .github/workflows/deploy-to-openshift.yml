@@ -56,9 +56,8 @@ jobs:
             SECRET_KEY:              "${{ secrets.SECRET_KEY }}"
             DEBUG:                   "False"
             # Allow both the API host and the Keycloak host
-            ALLOWED_HOSTS:         "si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com,si-keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com"
-            # CSRF must trust both endpoints that issue/accept cookies
-            CSRF_TRUSTED_ORIGINS:  "https://si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com,https://si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com/api/schema/,https://si-keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com"
+            ALLOWED_HOSTS: "si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com"
+            CSRF_TRUSTED_ORIGINS: "https://si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com"         
 
             ## PostgreSQL (Bitnami chart)
             DATABASE_URL:            "postgres://postgres:postgres@si-postgres-postgresql:5432/postgres"
