@@ -48,7 +48,7 @@ urlpatterns = [
     path("api/schema/", include(router.urls)),
 
     # OpenAPI schema and documentation (public)
-    path("api/schema/", schema_view, name="schema"),
+    
     path("api/docs/", swagger_view, name="swagger-ui"),
     path("api/redoc/", redoc_view, name="redoc"),
 ]
