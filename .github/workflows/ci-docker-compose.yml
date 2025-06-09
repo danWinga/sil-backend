@@ -20,12 +20,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js for static docs
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: "18"
 
-      - name: Create .env from GitHub Secrets
+      - name: Generate .env from Secrets
         run: |
           cat > .env <<EOF
           SECRET_KEY=${{ secrets.SECRET_KEY }}
@@ -52,40 +52,40 @@ jobs:
           ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
           EOF
 
-      - name: Build & bring up Postgres + RabbitMQ
+      - name: Build & start Postgres + RabbitMQ
         run: |
           docker compose build
           docker compose up -d postgres rabbitmq
 
-      - name: Wait for services
+      - name: Wait for Postgres
         run: |
           until docker compose exec -T postgres pg_isready -U postgres; do
-            echo "Waiting for Postgres…"; sleep 1;
-          done
-          until docker compose exec -T rabbitmq rabbitmqctl status; do
-            echo "Waiting for RabbitMQ…"; sleep 1;
+            echo "Waiting for Postgres…"
+            sleep 1
           done
 
-      - name: Run migrations & tests
+      - name: Wait for RabbitMQ
+        run: |
+          until docker compose exec -T rabbitmq rabbitmqctl status; do
+            echo "Waiting for RabbitMQ…"
+            sleep 1
+          done
+
+      - name: Migrate & Test
         run: |
           docker compose run --rm web python manage.py migrate --noinput
           docker compose run --rm web pytest --maxfail=1 --disable-warnings -q --cov=.
 
-      - name: Tear down Docker Compose
+      - name: Tear down Compose
         if: always()
         run: docker compose down --volumes --remove-orphans
 
       # ---- Static API docs generation ----
 
-      - name: Generate OpenAPI JSON (via docker cp)
+      - name: Generate OpenAPI JSON
         run: |
-          # 1. fire up a disposable container that writes to /tmp/openapi.json
-          CID=$(docker compose run -d web \
-            python manage.py spectacular --file /tmp/openapi.json)
-          # 2. copy it out to the GitHub runner
-          docker cp $CID:/tmp/openapi.json openapi.json
-          # 3. destroy the container
-          docker rm -f $CID
+          # write openapi.json directly into your repo mount
+          docker compose run --rm web python manage.py spectacular --file openapi.json
 
       - name: Bundle ReDoc static HTML (via npx)
         run: |
@@ -135,7 +135,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout --orphan gh-pages
           git reset --hard
-          # pick up both JSON and the docs folder
           cp openapi.json docs/
           git add openapi.json docs/
           git commit -m "ci: update static API docs"
