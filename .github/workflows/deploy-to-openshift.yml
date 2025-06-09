@@ -70,7 +70,7 @@ jobs:
             CELERY_BROKER_URL:       "amqp://guest:guest@si-rabbitmq:5672/"
 
             # Keycloak OIDC settings
-            OIDC_OP_ISSUER:          "https://si-keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com/realms/si"
+            OIDC_OP_ISSUER:          "https://si-keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com:8080/realms/si"
             OIDC_RP_CLIENT_ID:       "si-backend"
             OIDC_RP_CLIENT_SECRET:   "supersecret"
 

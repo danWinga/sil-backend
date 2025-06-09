@@ -35,7 +35,7 @@ data:
 
 ---
 # -------------------------------------------------------------------
-# 2) Deployment
+# 2) Keycloak Deployment (built-in H2 DB)
 # -------------------------------------------------------------------
 apiVersion: apps/v1
 kind: Deployment
@@ -60,30 +60,26 @@ spec:
           command:
             - /opt/keycloak/bin/kc.sh
           args:
-            - start
-            - --db=postgresql
-            - --import-realm
+            - start-dev
             - --http-port=8080
-            - --http-relative-path=/auth
+            - --import-realm
             - --hostname=si-keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com
             - --hostname-strict=false
             - --hostname-strict-https=true
           env:
-            # Admin credentials
+            # import realm.json
+            - name: KEYCLOAK_IMPORT
+              value: "/opt/keycloak/data/import/realm.json"
+            # admin credentials
             - name: KEYCLOAK_ADMIN
               value: "admin"
             - name: KEYCLOAK_ADMIN_PASSWORD
               value: "admin"
-            # JDBC settings
-            - name: KC_DB_URL
-              value: "jdbc:postgresql://si-postgres-postgresql:5432/keycloak"
-            - name: KC_DB_USERNAME
-              value: "postgres"
-            - name: KC_DB_PASSWORD
-              value: "postgres"
-            # Skip Liquibase validation
-            - name: QUARKUS_LIQUIBASE_VALIDATE_ON_MIGRATE
-              value: "false"
+            # enable health & metrics endpoints
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            - name: KC_METRICS_ENABLED
+              value: "true"
           ports:
             - containerPort: 8080
           volumeMounts:
@@ -97,7 +93,7 @@ spec:
 
 ---
 # -------------------------------------------------------------------
-# 3) Service
+# 3) Service on 80 → forwards to 8080
 # -------------------------------------------------------------------
 apiVersion: v1
 kind: Service
