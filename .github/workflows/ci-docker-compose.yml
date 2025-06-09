@@ -52,27 +52,21 @@ jobs:
           ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
           EOF
 
-      - name: Build Docker Compose images
-        run: docker compose build
+      - name: Build & bring up Postgres + RabbitMQ
+        run: |
+          docker compose build
+          docker compose up -d postgres rabbitmq
 
-      - name: Bring up Postgres & RabbitMQ
-        run: docker compose up -d postgres rabbitmq
-
-      - name: Wait for Postgres
+      - name: Wait for services
         run: |
           until docker compose exec -T postgres pg_isready -U postgres; do
-            echo "Waiting for Postgres…"
-            sleep 1
+            echo "Waiting for Postgres…"; sleep 1;
           done
-
-      - name: Wait for RabbitMQ
-        run: |
           until docker compose exec -T rabbitmq rabbitmqctl status; do
-            echo "Waiting for RabbitMQ…"
-            sleep 1
+            echo "Waiting for RabbitMQ…"; sleep 1;
           done
 
-      - name: Run Django migrations & tests
+      - name: Run migrations & tests
         run: |
           docker compose run --rm web python manage.py migrate --noinput
           docker compose run --rm web pytest --maxfail=1 --disable-warnings -q --cov=.
@@ -83,9 +77,15 @@ jobs:
 
       # ---- Static API docs generation ----
 
-      - name: Generate OpenAPI JSON
+      - name: Generate OpenAPI JSON (via docker cp)
         run: |
-          docker compose run --rm web python manage.py spectacular --file openapi.json
+          # 1. fire up a disposable container that writes to /tmp/openapi.json
+          CID=$(docker compose run -d web \
+            python manage.py spectacular --file /tmp/openapi.json)
+          # 2. copy it out to the GitHub runner
+          docker cp $CID:/tmp/openapi.json openapi.json
+          # 3. destroy the container
+          docker rm -f $CID
 
       - name: Bundle ReDoc static HTML (via npx)
         run: |
@@ -97,7 +97,7 @@ jobs:
         run: |
           mkdir -p docs/swagger
           npm install swagger-ui-dist@latest
-          cp node_modules/swagger-ui-dist/swagger-ui.css docs/swagger/
+          cp node_modules/swagger-ui-dist/swagger-ui.css       docs/swagger/
           cp node_modules/swagger-ui-dist/swagger-ui-bundle.js docs/swagger/
           cp node_modules/swagger-ui-dist/swagger-ui-standalone-preset.js docs/swagger/
           cat > docs/swagger/index.html <<'EOF'
@@ -135,6 +135,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout --orphan gh-pages
           git reset --hard
+          # pick up both JSON and the docs folder
           cp openapi.json docs/
           git add openapi.json docs/
           git commit -m "ci: update static API docs"
@@ -159,8 +160,9 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Lowercase owner
-        run: echo "OWNER=$(echo '${{ github.repository_owner }}' \
-          | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+        run: |
+          echo "OWNER=$(echo '${{ github.repository_owner }}' \
+            | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Build & push image to GHCR
         uses: docker/build-push-action@v4
