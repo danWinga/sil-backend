@@ -312,3 +312,353 @@ Secrets not updated	Ensure values in GitHub Secrets are correct and match what's
 
 Manual Deployment
 You can manually trigger this workflow from the GitHub Actions tab using the “Run workflow” button (thanks to workflow_dispatch support).
+
+
+
+SI-Backend OpenShift Deployment & CI/CD User Guide
+This guide walks you step-by-step through:
+
+• Prerequisites
+• OpenShift setup (PostgreSQL, RabbitMQ, Keycloak, Secrets)
+• GitHub Actions CI/CD pipeline for SI-API and SI-Worker
+• Triggering migrations and deployments
+
+All “secret” values shown here are dummy placeholders—replace them with your real credentials!
+
+Prerequisites
+• An OpenShift cluster and CLI (oc) configured
+• Helm 3 installed
+• A GitHub repository with your SI-Backend code and the provided workflows
+• kubectl / oc authenticated (token or kubeconfig)
+• A DNS (or OpenShift Routes) pointing at your services
+
+2. OpenShift Project & Login
+
+Log in to your cluster and switch to your project (namespace):
+
+oc login https://api.rm3.7wse.p1.openshiftapps.com:6443 \
+  --token=sha256~DUMMY_OPENSHIFT_TOKEN
+oc new-project danwinga-dev || oc project danwinga-dev
+3. Add the Bitnami Helm Repo
+
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo update
+4. Deploy PostgreSQL
+
+helm upgrade --install si-postgres bitnami/postgresql \
+  --namespace danwinga-dev \
+  --set global.postgresql.auth.postgresPassword=postgres123 \
+  --set global.postgresql.auth.username=postgres_user \
+  --set global.postgresql.auth.database=si_db
+This will create a StatefulSet si-postgres-postgresql with:
+
+• Username: postgres_user
+• Password: postgres123
+• Database: si_db
+
+5. Deploy RabbitMQ
+
+helm upgrade --install si-rabbitmq bitnami/rabbitmq \
+  --namespace danwinga-dev \
+  --set auth.username=guest_user \
+  --set auth.password=guest_pass
+RabbitMQ will be available at the Kubernetes service si-rabbitmq.
+
+6. Create SI-Backend Secrets
+
+All runtime‐config environment variables live in a single OpenShift Secret named si-backend-secret.  Here's an example with dummy values:
+
+oc create secret generic si-backend-secret \
+  --namespace=danwinga-dev \
+  --from-literal=SECRET_KEY='CHANGE_ME_TO_A_RANDOM_SECRET' \
+  --from-literal=DEBUG='False' \
+  --from-literal=ALLOWED_HOSTS='si-api.apps.example.com,si-keycloak.apps.example.com' \
+  --from-literal=CSRF_TRUSTED_ORIGINS='https://si-api.apps.example.com,https://si-keycloak.apps.example.com' \
+  --from-literal=DATABASE_URL='postgres://postgres_user:postgres123@si-postgres-postgresql:5432/si_db' \
+  --from-literal=RABBITMQ_URL='amqp://guest_user:guest_pass@si-rabbitmq:5672/' \
+  --from-literal=BROKER_URL='amqp://guest_user:guest_pass@si-rabbitmq:5672/' \
+  --from-literal=CELERY_BROKER_URL='amqp://guest_user:guest_pass@si-rabbitmq:5672/' \
+  --from-literal=OIDC_OP_ISSUER='https://si-keycloak.apps.example.com/realms/si' \
+  --from-literal=OIDC_RP_CLIENT_ID='si-backend' \
+  --from-literal=OIDC_RP_CLIENT_SECRET='SUPER_SECRET_CLIENT_SECRET' \
+  --from-literal=AFRICAS_TALKING_USERNAME='sandbox_user' \
+  --from-literal=AFRICAS_TALKING_API_KEY='atsk_dummyapikey1234567890' \
+  --from-literal=EMAIL_BACKEND='django.core.mail.backends.smtp.EmailBackend' \
+  --from-literal=EMAIL_HOST='smtp.gmail.com' \
+  --from-literal=EMAIL_PORT='587' \
+  --from-literal=EMAIL_USE_TLS='True' \
+  --from-literal=EMAIL_HOST_USER='you@example.com' \
+  --from-literal=EMAIL_HOST_PASSWORD='EMAIL_PASSWORD_HERE' \
+  --from-literal=DEFAULT_FROM_EMAIL='noreply@example.com' \
+  --from-literal=ADMIN_EMAIL='admin@example.com'
+7. Deploy Keycloak (Optional)
+
+Your repository contains an OpenShift YAML at openshift/keycloak-defaultdb.yaml.  To deploy Keycloak using the built-in H2 DB:
+
+oc apply -f openshift/keycloak-defaultdb.yaml
+Once Keycloak is up, create a realm si and a client si-backend with your desired roles and client secret.
+
+8. CI/CD in GitHub Actions
+
+Your .github/workflows/ci-docker-compose.yaml does the following:
+
+Checks out code, sets up Node.js
+Builds your Docker Compose stack (Postgres, RabbitMQ, Keycloak if configured)
+Runs migrations & test suite (pytest) in the web service
+Generates docs/openapi.json via python manage.py spectacular
+Creates two static HTML files in docs/ – • index.html (ReDoc) • swagger.html (Swagger-UI)
+Uploads docs/ to GitHub Pages using upload-pages-artifact & deploy-pages actions
+Separately builds & pushes your container image to GitHub Container Registry
+Secrets to configure in GitHub repo settings (under Settings → Secrets & variables → Actions):
+
+• SECRET_KEY
+• DATABASE_URL
+• RABBITMQ_URL
+• OIDC_OP_ISSUER, OIDC_RP_CLIENT_ID, OIDC_RP_CLIENT_SECRET
+• AFRICAS_TALKING_USERNAME, AFRICAS_TALKING_API_KEY
+• EMAIL_HOST, EMAIL_PORT, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, etc.
+
+Once those are set, every push to main will:
+
+Run your tests
+Regenerate API docs
+Publish them to: https://<your-org>.github.io/<your-repo>/index.html https://<your-org>.github.io/<your-repo>/swagger.html
+Build & push Docker images
+9. Triggering a Deployment
+
+After you have:
+
+• Deployed your infra (Postgres, RabbitMQ, Keycloak)
+• Created si-backend-secret
+• Configured GitHub secrets
+
+Simply push your code to main:
+
+git add .
+git commit -m "feat: ready for OpenShift deploy"
+git push origin main
+GitHub Actions will automatically:
+
+Run tests
+Publish API docs to GitHub Pages
+Build & push your SI-Backend image
+You can then deploy your SI-Backend & SI-Worker to OpenShift via your own Deployment YAMLs (not covered here), using the image tags published to GHCR.
+
+10. Verifying
+
+• API Docs (ReDoc):
+https://<your-org>.github.io/<your-repo>/index.html
+
+• API Docs (Swagger-UI):
+https://<your-org>.github.io/<your-repo>/swagger.html
+
+• Raw OpenAPI JSON:
+https://<your-org>.github.io/<your-repo>/openapi.json
+
+• Container Images:
+ghcr.io/<your-org>/si-backend:latest
+ghcr.io/<your-org>/si-backend:<git-sha>
+
+• OpenShift services:
+– Postgres at si-postgres-postgresql.danwinga-dev.svc.cluster.local
+– RabbitMQ at si-rabbitmq.danwinga-dev.svc.cluster.local
+– Keycloak at your Route URL
+
+SI-Backend API Testing Guide
+This document walks you through obtaining an OAuth2 token from Keycloak and exercising the SI-Backend REST API endpoints (Categories, Products, Orders) via curl. Replace placeholder values with your real URLs, client credentials, and tokens.
+
+Prerequisites
+• Keycloak realm si is running and reachable at https://si-keycloak-…/realms/si
+• A client in that realm with ID si-backend and a client secret
+• A test user (testuser / password) exists in the si realm
+• The SI-Backend API is deployed at https://si-api-…/api/
+• curl is installed on your workstation
+
+Set the following environment variables (example):
+
+export KEYCLOAK_URL="https://si-keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com"
+export API_URL="https://si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com/api"
+export CLIENT_ID="si-backend"
+export CLIENT_SECRET="supersecret"
+export USERNAME="testuser"
+export PASSWORD="password"
+1. Obtain an Access Token
+Use the Resource Owner Password grant to get a bearer token:
+
+curl -s -X POST "$KEYCLOAK_URL/realms/si/protocol/openid-connect/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id=$CLIENT_ID" \
+  -d "client_secret=$CLIENT_SECRET" \
+  -d "grant_type=password" \
+  -d "username=$USERNAME" \
+  -d "password=$PASSWORD" \
+  | jq -r .access_token \
+  > access_token.txt
+• The token will be saved in access_token.txt.
+• You can verify it:
+
+TOKEN=$(cat access_token.txt)
+echo "Bearer $TOKEN"
+2. Categories Endpoints
+2.1 Create a Category
+TOKEN=$(cat access_token.txt)
+
+curl -X POST "$API_URL/categories/" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name":   "Electronics",
+    "slug":   "electronics",
+    "parent": null
+  }'
+Response (201 Created):
+
+{
+  "id":       1,
+  "name":     "Electronics",
+  "slug":     "electronics",
+  "parent":   null,
+  "created":  "...",
+  "modified": "..."
+}
+2.2 List Categories
+curl -X GET "$API_URL/categories/" \
+  -H "Authorization: Bearer $TOKEN"
+Response (200 OK):
+
+[
+  {
+    "id":     1,
+    "name":   "Electronics",
+    "slug":   "electronics",
+    "parent": null,
+    ...
+  },
+  ...
+]
+3. Products Endpoints
+3.1 Create a Single Product
+curl -X POST "$API_URL/products/" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name":        "Smartphone X",
+    "description": "Latest model smartphone",
+    "price":       "699.00",
+    "categories":  [1]
+  }'
+Response (201 Created):
+
+{
+  "id":          1,
+  "name":        "Smartphone X",
+  "description": "Latest model smartphone",
+  "price":       "699.00",
+  "categories":  [1],
+  ...
+}
+3.2 Bulk Create Products
+curl -X POST "$API_URL/products/" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {
+      "name":        "Tablet Y",
+      "description": "10-inch tablet",
+      "price":       "299.00",
+      "categories":  [1]
+    },
+    {
+      "name":        "Laptop Z",
+      "description": "15-inch laptop",
+      "price":       "1299.00",
+      "categories":  [1]
+    }
+  ]'
+Response (201 Created):
+
+[
+  { "id": 2, ... },
+  { "id": 3, ... }
+]
+4. Orders Endpoint
+4.1 Create an Order
+curl -X POST "$API_URL/orders/" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "items": [
+      { "product_id": 1, "quantity": 2 },
+      { "product_id": 2, "quantity": 1 }
+    ]
+  }'
+Response (201 Created):
+
+{
+  "id":          1,
+  "user":        "testuser",
+  "items":       [
+      { "product_id": 1, "quantity": 2, "price": "699.00" },
+      { "product_id": 2, "quantity": 1, "price": "299.00" }
+  ],
+  "total_price": "1697.00",
+  "status":      "pending",
+  ...
+}
+5. Refreshing Your Token
+Access tokens expire (often in 5 minutes). To avoid re-authenticating your password, obtain a refresh token:
+
+curl -s -X POST "$KEYCLOAK_URL/realms/si/protocol/openid-connect/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id=$CLIENT_ID" \
+  -d "client_secret=$CLIENT_SECRET" \
+  -d "grant_type=refresh_token" \
+  -d "refresh_token=$(jq -r .refresh_token < access_token.txt)" \
+  | jq -r .access_token \
+  > access_token.txt
+6. Troubleshooting
+401 Unauthorized → check your token, client credentials, or user password.
+403 Forbidden → ensure testuser has the correct roles in Keycloak.
+404 Not Found → verify API_URL and endpoint paths.
+400 Bad Request → inspect your JSON payload for missing/invalid fields.
+
+7. Admin Consoles
+===============
+
+Beyond exercising the public API, you have two admin UIs:
+
+Keycloak Admin Console
+SI-API (Django) Admin
+—
+
+Keycloak Admin Console
+• URL:
+https://si-keycloak-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com/aadmin
+• Username: admin
+• Password: admin
+
+Use this to manage your si realm, users, roles, clients (e.g. si-backend), etc.
+
+—
+
+2. SI-API (Django) Admin
+
+• URL:
+https://si-api-danwinga-dev.apps.rm3.7wse.p1.openshiftapps.com/admin/
+• Username: user
+• Password: password
+
+Use the Django admin to manage Products, Categories, Orders, and other models directly.
+
+Notes
+– If you need to create or reset these accounts, log into Keycloak as the admin user and adjust credentials in the si realm or add a Django superuser via the shell in your web container:
+
+docker compose run --rm web python manage.py createsuperuser
+– Ensure your ALLOWED_HOSTS and CORS/CSRF settings (in your si-backend-secret) include both the Keycloak and SI-API admin hostnames.
+
+
+
+
+
+
+
