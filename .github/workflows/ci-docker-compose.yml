@@ -1,5 +1,5 @@
 # .github/workflows/ci-docker-compose.yaml
-name: CI via Docker Compose & GitHub Pages
+name: CI- via Docker Compose & GitHub Pages
 
 on:
   push:
