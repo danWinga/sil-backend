@@ -12,6 +12,7 @@ permissions:
   contents: read       # for checkout
   pages: write         # to push to GitHub Pages
   id-token: write      # for OIDC token that configure-pages uses
+  packages: write      #  This explicitly grants permission to write to packages (GHCR).
 
 env:
   IMAGE_NAME: si-backend
