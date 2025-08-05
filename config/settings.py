@@ -23,7 +23,7 @@ env = environ.Env(
     # Africa’s Talking
     AFRICAS_TALKING_API_KEY  = (str, ""),
     AFRICAS_TALKING_USERNAME = (str, ""),
-    AFRICAS_TALKING_SENDER_ID = (str, None),
+    # AFRICAS_TALKING_SENDER_ID = (str, None),
 
     # SMTP / Gmail
     EMAIL_BACKEND        = (str, "django.core.mail.backends.smtp.EmailBackend"),
@@ -233,7 +233,7 @@ RABBITMQ_URL = env("RABBITMQ_URL")
 # Africa’s Talking
 AFRICAS_TALKING_API_KEY   = env("AFRICAS_TALKING_API_KEY")
 AFRICAS_TALKING_USERNAME  = env("AFRICAS_TALKING_USERNAME")
-AFRICAS_TALKING_SENDER_ID = env("AFRICAS_TALKING_SENDER_ID")
+# AFRICAS_TALKING_SENDER_ID = env("AFRICAS_TALKING_SENDER_ID")
 
 # Logging (JSON to console)
 LOGGING = {

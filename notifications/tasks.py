@@ -65,7 +65,7 @@ def send_order_sms(self, order_id):
         return
 
     try:
-        sender=settings.AFRICAS_TALKING_SENDER_ID
+        # sender=settings.AFRICAS_TALKING_SENDER_ID
         africastalking.initialize(
             username=settings.AFRICAS_TALKING_USERNAME,
             api_key=settings.AFRICAS_TALKING_API_KEY,
