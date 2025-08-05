@@ -86,6 +86,7 @@ jobs:
             EMAIL_HOST_USER:         "${{ secrets.EMAIL_HOST_USER }}"
             EMAIL_HOST_PASSWORD:     "${{ secrets.EMAIL_HOST_PASSWORD }}"
             ADMIN_EMAIL:             "${{ secrets.ADMIN_EMAIL }}"
+            DEFAULT_FROM_EMAIL:      "danwinga@gmail.com"
           EOF
 
       - name: Set up Helm
