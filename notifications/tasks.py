@@ -30,10 +30,15 @@ def send_order_notification(order_id):
             username=settings.AFRICAS_TALKING_USERNAME,
             api_key=settings.AFRICAS_TALKING_API_KEY,
         )
-        africastalking.SMS.send(
-            message=f"Your order #{order.id} is confirmed (KES {order.total_price})",
-            recipients=[phone],
-        )
+        # Add senderId here if it's needed for synchronous testing
+        sms_params = {
+            "message": f"Your order #{order.id} is confirmed (KES {order.total_price})",
+            "recipients": [phone],
+        }
+        if settings.AFRICAS_TALKING_SENDER_ID:
+            sms_params["senderId"] = settings.AFRICAS_TALKING_SENDER_ID
+        africastalking.SMS.send(**sms_params)
+
 
     # 2) Email
     items_list = "\n".join(
@@ -64,16 +69,29 @@ def send_order_sms(self, order_id):
         logger.warning("No phone for order %s – skipping SMS", order_id)
         return
 
+    # Log the phone number for debugging
+    logger.info(f"Attempting to send SMS for order {order_id} to {phone}")
+
     try:
         africastalking.initialize(
             username=settings.AFRICAS_TALKING_USERNAME,
             api_key=settings.AFRICAS_TALKING_API_KEY,
         )
-        resp = africastalking.SMS.send(
-            message=f"Hi {order.customer.username}, your order #{order.id} "
-            f"for KES {order.total_price} is confirmed.",
-            recipients=[phone],
-        )
+
+        # Prepare parameters for the SMS.send() method
+        sms_params = {
+            "message": f"Hi {order.customer.username}, your order #{order.id} "
+                       f"for KES {order.total_price} is confirmed.",
+            "recipients": [phone],
+        }
+
+        # Dynamically add senderId if it's available in settings
+        if settings.AFRICAS_TALKING_SENDER_ID:
+            sms_params["senderId"] = settings.AFRICAS_TALKING_SENDER_ID
+            logger.info(f"Using senderId: {settings.AFRICAS_TALKING_SENDER_ID}") # Log senderId used
+
+        # Pass the parameters using ** to unpack the dictionary
+        resp = africastalking.SMS.send(**sms_params)
         logger.info("SMS sent for order %s: %s", order_id, resp)
     except Exception as exc:
         logger.error("SMS send failed for order %s: %s", order_id, exc, exc_info=True)
