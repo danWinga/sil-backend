@@ -31,7 +31,7 @@ env = environ.Env(
     EMAIL_USE_TLS        = (bool, True),
     EMAIL_HOST_USER      = (str, ""),
     EMAIL_HOST_PASSWORD  = (str, ""),
-    DEFAULT_FROM_EMAIL   = (str, ""),
+    DEFAULT_FROM_EMAIL   = (str, "danwinga@gmail.com"),
     ADMIN_EMAIL          = (str, ""),
 )
 
